@@ -9,6 +9,7 @@ use std::cell::UnsafeCell;
 use std::cmp::Ordering;
 use std::cmp::PartialEq;
 use std::cmp::PartialOrd;
+use std::collections::HashSet;
 use std::rc::Weak;
 use std::vec::Vec;
 
@@ -21,6 +22,7 @@ pub struct WeakNode {
 }
 
 pub struct NodeData {
+    id: u32,
     rank: u32,
     dirty: bool,
     update: Box<FnMut()>,
@@ -31,7 +33,14 @@ pub struct NodeData {
 
 impl Node {
     pub fn mark_dirty(&self) {
+        self.mark_dirty2(&mut HashSet::new());
+    }
+
+    fn mark_dirty2(&self, visited: &mut HashSet<u32>) {
         let self_ = unsafe { &*(*self).data.get() };
+        if visited.contains(&self_.id) {
+            return;
+        }
         match self_.weak_sodium_ctx.upgrade() {
             Some(sodium_ctx) => {
                 let sodium_ctx = unsafe { &mut *(*sodium_ctx.data).get() };
@@ -39,6 +48,17 @@ impl Node {
             },
             None => ()
         }
+        self_.dependents.iter().for_each(|dependent| {
+            dependent.upgrade().iter().for_each(|dependent| {
+                dependent.mark_dirty2(visited);
+            })
+        });
+    }
+}
+
+impl WeakNode {
+    pub fn upgrade(&self) -> Option<Node> {
+        self.data.upgrade().map(|data| Node { data })
     }
 }
 
