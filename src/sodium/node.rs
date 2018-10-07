@@ -1,3 +1,4 @@
+use sodium::SodiumCtx;
 use sodium::WeakSodiumCtx;
 use sodium::gc::Finalize;
 use sodium::gc::Gc;
@@ -10,7 +11,7 @@ use std::cmp::Ordering;
 use std::cmp::PartialEq;
 use std::cmp::PartialOrd;
 use std::collections::HashSet;
-use std::rc::Weak;
+use std::rc::Rc;
 use std::vec::Vec;
 
 pub struct Node {
@@ -27,10 +28,72 @@ pub struct NodeData {
     update: Box<FnMut()>,
     dependencies: Vec<Node>,
     dependents: Vec<WeakNode>,
+    cleanup: Box<FnMut()>,
     weak_sodium_ctx: WeakSodiumCtx
 }
 
 impl Node {
+    pub fn new<UPDATE: FnMut() + 'static, CLEANUP: FnMut() + 'static>(
+        sodium_ctx: &SodiumCtx,
+        update: UPDATE,
+        dependencies: Vec<Node>,
+        mut cleanup: CLEANUP
+    ) -> Node {
+        let id = sodium_ctx.new_id();
+        let mut rank = 0;
+        for dependency in &dependencies {
+            let dependency = unsafe { &*(*dependency.data).get() };
+            if rank <= dependency.rank {
+                rank = dependency.rank + 1;
+            }
+        }
+        let self_: Rc<UnsafeCell<Option<Node>>> = Rc::new(UnsafeCell::new(None));
+        let cleanup2;
+        {
+            let self_ = self_.clone();
+            cleanup2 = move || {
+                cleanup();
+                let self_ = unsafe { &mut *(*self_).get() };
+                match self_ {
+                    Some(ref mut self_) => {
+                        let self_ = unsafe { &*(*self_.data).get() };
+                        self_.dependencies.iter().for_each(|dependency| {
+                            let dependency = unsafe { &mut *(*dependency.data).get() };
+                            dependency.dependents.retain(|dependent| {
+                                match dependent.upgrade() {
+                                    Some(dependent) => {
+                                        let dependent = unsafe { &*(*dependent.data).get() };
+                                        dependent.id != self_.id
+                                    },
+                                    None => false
+                                }
+                            });
+                        });
+                    },
+                    None => ()
+                }
+            };
+        }
+        let mut gc_ctx = sodium_ctx.gc_ctx();
+        let node = Node {
+            data: gc_ctx.new_gc(UnsafeCell::new(
+                NodeData {
+                    id,
+                    rank,
+                    update: Box::new(update),
+                    dependencies,
+                    dependents: Vec::new(),
+                    cleanup: Box::new(cleanup2),
+                    weak_sodium_ctx: sodium_ctx.downgrade()
+                }
+            ))
+        };
+        unsafe {
+            *(*self_).get() = Some(node.clone());
+        };
+        node
+    }
+
     pub fn mark_dirty(&self) {
         self.mark_dirty2(&mut HashSet::new());
     }
@@ -94,15 +157,24 @@ impl Clone for Node {
 
 impl Trace for Node {
     fn trace(&self, f: &mut FnMut(&GcDep)) {
-        let self_ = unsafe { &*(*self).data.get() };
-        self_.dependencies.trace(f);
+        f(&self.data.to_dep());
     }
 }
 
 impl Finalize for Node {
     fn finalize(&mut self) {
-        let self_ = unsafe { &mut *(*self).data.get() };
-        self_.dependencies.finalize();
+    }
+}
+
+impl Trace for NodeData {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {
+        self.dependencies.trace(f);
+    }
+}
+
+impl Finalize for NodeData {
+    fn finalize(&mut self) {
+        (self.cleanup)();
     }
 }
 

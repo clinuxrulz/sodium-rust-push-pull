@@ -228,6 +228,13 @@ impl Trace for String {
     fn trace(&self, f: &mut FnMut(&GcDep)) {}
 }
 
+impl<A:Trace> Trace for UnsafeCell<A> {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {
+        let val = unsafe { &*self.get() };
+        val.trace(f);
+    }
+}
+
 impl<A: Finalize> Finalize for Gc<A> {
     fn finalize(&mut self) {
         let self2: &mut A = unsafe { &mut *self.value };
@@ -263,6 +270,13 @@ impl Finalize for i32 {}
 impl Finalize for &'static str {}
 
 impl Finalize for String {}
+
+impl<A:Finalize> Finalize for UnsafeCell<A> {
+    fn finalize(&mut self) {
+        let self_ = unsafe { &mut *self.get() };
+        self_.finalize();
+    }
+}
 
 #[derive(Clone,Copy)]
 enum GcCellFlags {
