@@ -8,6 +8,7 @@ pub use self::lambda::IsLambda3;
 pub use self::lambda::IsLambda4;
 pub use self::lambda::IsLambda5;
 pub use self::lambda::IsLambda6;
+pub use self::listener::Listener;
 pub use self::memo_lazy::MemoLazy;
 pub use self::node::Node;
 pub use self::sodium_ctx::SodiumCtx;
@@ -22,6 +23,7 @@ pub mod gc;
 #[macro_use]
 mod lambda;
 
+mod listener;
 mod memo_lazy;
 mod node;
 mod sodium_ctx;
