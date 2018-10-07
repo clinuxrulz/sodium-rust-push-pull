@@ -33,7 +33,7 @@ impl Listener {
     pub fn new<UNLISTEN: FnMut() + 'static>(
         sodium_ctx: &SodiumCtx,
         unlisten: UNLISTEN,
-        unlistenDependencies: Vec<Dep>,
+        unlisten_dependencies: Vec<Dep>,
         dependencies: Vec<Node>
     ) -> Listener {
         let mut gc_ctx = sodium_ctx.gc_ctx();
@@ -43,7 +43,7 @@ impl Listener {
                 node: Node::new(
                     sodium_ctx,
                     || {},
-                    unlistenDependencies,
+                    unlisten_dependencies,
                     dependencies,
                     || {}
                 )
