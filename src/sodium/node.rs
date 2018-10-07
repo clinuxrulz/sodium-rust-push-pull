@@ -24,7 +24,6 @@ pub struct WeakNode {
 pub struct NodeData {
     id: u32,
     rank: u32,
-    dirty: bool,
     update: Box<FnMut()>,
     dependencies: Vec<Node>,
     dependents: Vec<WeakNode>,
