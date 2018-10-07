@@ -1,0 +1,6 @@
+[package]
+name = "sodium-rust-push-pull"
+version = "0.1.0"
+authors = ["Clinton Selke <clinuxrulz@gmail.com>"]
+
+[dependencies]
