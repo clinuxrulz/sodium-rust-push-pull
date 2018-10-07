@@ -139,6 +139,11 @@ impl Node {
             });
         })
     }
+
+    pub fn sodium_ctx(&self) -> SodiumCtx {
+        let self_ = unsafe { &*(*self.data).get() };
+        self_.weak_sodium_ctx.upgrade().unwrap()
+    }
 }
 
 impl WeakNode {
