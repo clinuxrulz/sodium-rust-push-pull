@@ -83,7 +83,6 @@ impl Finalize for Node {
     }
 }
 
-
 impl Ord for Node {
     fn cmp(&self, other: &Node) -> Ordering {
         let self_ = unsafe { &*(*self).data.get() };
