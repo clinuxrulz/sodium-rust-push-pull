@@ -43,6 +43,15 @@ impl<A: Trace + Finalize + Clone + 'static> CellSink<A> {
         }
     }
 
+    pub fn send(&self, value: A) {
+        let sodium_ctx = self.node.sodium_ctx();
+        sodium_ctx.transaction(|| {
+            let next_value_op = unsafe { &mut *(*self.next_value_op).get() };
+            *next_value_op = Some(MemoLazy::new(move || value.clone()));
+            self.node.mark_dirty();
+        });
+    }
+
     pub fn to_cell(&self) -> Cell<A> {
         Cell {
             value: self.value.clone(),

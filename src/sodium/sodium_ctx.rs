@@ -41,7 +41,7 @@ impl SodiumCtx {
         id
     }
 
-    pub fn transaction<A,CODE:FnMut()->A>(&self, mut code: CODE)->A {
+    pub fn transaction<A,CODE:FnOnce()->A>(&self, code: CODE)->A {
         let self_ = unsafe { &mut *(*self.data).get() };
         self_.transaction_depth = self_.transaction_depth + 1;
         let result = code();
