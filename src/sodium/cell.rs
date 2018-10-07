@@ -1,4 +1,5 @@
 use sodium::IsLambda1;
+use sodium::Listener;
 use sodium::MemoLazy;
 use sodium::Node;
 use sodium::SodiumCtx;
@@ -65,6 +66,25 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 || {}
             )
         }
+    }
+
+    pub fn listen<CALLBACK:FnMut(&A)+'static>(
+        &self,
+        callback: CALLBACK
+    ) -> Listener {
+        let sodium_ctx = self.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        let mut callback = Box::new(callback);
+        let self_ = self.clone();
+        Listener::new(Node::new(
+            sodium_ctx,
+            move || {
+                callback(&self_.sample_no_trans())
+            },
+            Vec::new(),
+            vec![self.node.clone()],
+            || {}
+        ))
     }
 }
 
