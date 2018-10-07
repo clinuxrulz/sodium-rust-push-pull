@@ -144,6 +144,11 @@ impl Node {
         })
     }
 
+    pub fn update(&self) {
+        let self_ = unsafe { &mut *(*self.data).get() };
+        (self_.update)();
+    }
+
     pub fn sodium_ctx(&self) -> SodiumCtx {
         let self_ = unsafe { &*(*self.data).get() };
         self_.weak_sodium_ctx.upgrade().unwrap()
