@@ -40,6 +40,7 @@ impl Node {
         if visited.contains(&self_.id) {
             return;
         }
+        visited.insert(self_.id);
         match self_.weak_sodium_ctx.upgrade() {
             Some(sodium_ctx) => {
                 let sodium_ctx = unsafe { &mut *(*sodium_ctx.data).get() };
@@ -50,8 +51,30 @@ impl Node {
         self_.dependents.iter().for_each(|dependent| {
             dependent.upgrade().iter().for_each(|dependent| {
                 dependent.mark_dirty2(visited);
-            })
+            });
         });
+    }
+
+    pub fn ensure_bigger_than(&self, rank: u32) {
+        self.ensure_bigger_than2(rank, &mut HashSet::new());
+    }
+
+    fn ensure_bigger_than2(&self, rank: u32, visited: &mut HashSet<u32>) {
+        let self_ = unsafe { &mut *(*self).data.get() };
+        if visited.contains(&self_.id) {
+            return;
+        }
+        visited.insert(self_.id);
+        if self_.rank <= rank {
+            return
+        }
+        let rank2 = rank + 1;
+        self_.rank = rank2;
+        self_.dependents.iter().for_each(|dependent| {
+            dependent.upgrade().iter().for_each(|dependent| {
+                dependent.ensure_bigger_than2(rank2, visited);
+            });
+        })
     }
 }
 
