@@ -1,3 +1,4 @@
+use sodium::Dep;
 use sodium::SodiumCtx;
 use sodium::WeakSodiumCtx;
 use sodium::gc::Finalize;
@@ -26,6 +27,7 @@ pub struct NodeData {
     id: u32,
     rank: u32,
     update: Box<FnMut()>,
+    updateDependencies: Vec<Dep>,
     dependencies: Vec<Node>,
     dependents: Vec<WeakNode>,
     cleanup: Box<FnMut()>,
@@ -36,6 +38,7 @@ impl Node {
     pub fn new<UPDATE: FnMut() + 'static, CLEANUP: FnMut() + 'static>(
         sodium_ctx: &SodiumCtx,
         update: UPDATE,
+        updateDependencies: Vec<Dep>,
         dependencies: Vec<Node>,
         mut cleanup: CLEANUP
     ) -> Node {
@@ -81,6 +84,7 @@ impl Node {
                     id,
                     rank,
                     update: Box::new(update),
+                    updateDependencies,
                     dependencies,
                     dependents: Vec::new(),
                     cleanup: Box::new(cleanup2),
@@ -174,6 +178,7 @@ impl Finalize for Node {
 impl Trace for NodeData {
     fn trace(&self, f: &mut FnMut(&GcDep)) {
         self.dependencies.trace(f);
+        self.updateDependencies.iter().for_each(|update_dep| f(&update_dep.gc_dep));
     }
 }
 

@@ -22,6 +22,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 sodium_ctx,
                 || {},
                 Vec::new(),
+                Vec::new(),
                 || {}
             )
         }
@@ -39,6 +40,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         let sodium_ctx = self.node.sodium_ctx();
         let sodium_ctx = &sodium_ctx;
         let mut gc_ctx = sodium_ctx.gc_ctx();
+        let update_deps = f.deps();
         let f = Rc::new(f);
         let self_ = self.clone();
         let self_2 = self_.clone();
@@ -58,6 +60,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                     let f = f.clone();
                     *thunk = MemoLazy::new(move || f.apply(&self_3.sample_no_trans()));
                 },
+                update_deps,
                 vec![self_2.node.clone()],
                 || {}
             )
