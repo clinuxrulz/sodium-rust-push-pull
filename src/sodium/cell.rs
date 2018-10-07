@@ -9,8 +9,8 @@ use std::cell::UnsafeCell;
 use std::rc::Rc;
 
 pub struct Cell<A> {
-    value: Gc<UnsafeCell<MemoLazy<A>>>,
-    node: Node
+    pub value: Gc<UnsafeCell<MemoLazy<A>>>,
+    pub node: Node
 }
 
 impl<A: Clone + Trace + Finalize + 'static> Cell<A> {

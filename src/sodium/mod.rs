@@ -1,4 +1,5 @@
 pub use self::cell::Cell;
+pub use self::cell_sink::CellSink;
 pub use self::dep::Dep;
 pub use self::lambda::Lambda;
 pub use self::lambda::IsLambda1;
@@ -14,6 +15,7 @@ pub use self::sodium_ctx::SodiumCtxData;
 pub use self::sodium_ctx::WeakSodiumCtx;
 
 mod cell;
+mod cell_sink;
 mod dep;
 pub mod gc;
 
