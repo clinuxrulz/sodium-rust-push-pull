@@ -1,4 +1,5 @@
 use sodium::impl_::IsLambda1;
+use sodium::impl_::IsLambda2;
 use sodium::impl_::Latch;
 use sodium::impl_::Listener;
 use sodium::impl_::MemoLazy;
@@ -62,6 +63,43 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 move || {
                     let rval_latch = unsafe { &mut *(*rval_latch).get() };
                     rval_latch.reset();
+                },
+                update_deps,
+                vec![self_2.node.clone()],
+                || {}
+            )
+        }
+    }
+
+    pub fn lift2<B,C,F: IsLambda2<A,B,C> + 'static>(&self, cb: Cell<B>, f: F) -> Cell<C> where B: Clone + Trace + Finalize + 'static, C: Clone + Trace + Finalize + 'static {
+        let sodium_ctx = self.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        let mut gc_ctx = sodium_ctx.gc_ctx();
+        let update_deps = f.deps();
+        let f = Rc::new(f);
+        let self_ = self.clone();
+        let self_2 = self.clone();
+        let latch;
+        {
+            let cb = cb.clone();
+            latch = gc_ctx.new_gc(UnsafeCell::new(Latch::new(
+                move || {
+                    let self_ = self_.clone();
+                    let cb = cb.clone();
+                    let f = f.clone();
+                    MemoLazy::new(move || {
+                        f.apply(&self_.sample_no_trans(), &cb.sample_no_trans())
+                    })
+                }
+            )));
+        }
+        Cell {
+            value: latch.clone(),
+            node: Node::new(
+                sodium_ctx,
+                move || {
+                    let latch = unsafe { &mut *(*latch).get() };
+                    latch.reset();
                 },
                 update_deps,
                 vec![self_2.node.clone()],
