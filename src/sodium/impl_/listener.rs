@@ -1,12 +1,9 @@
-use sodium::Dep;
-use sodium::Node;
-use sodium::SodiumCtx;
+use sodium::impl_::Node;
 use sodium::gc::Finalize;
 use sodium::gc::Gc;
 use sodium::gc::GcDep;
 use sodium::gc::Trace;
 use std::cell::UnsafeCell;
-use std::vec::Vec;
 
 pub struct Listener {
     node_op: Gc<UnsafeCell<Option<Node>>>

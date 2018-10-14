@@ -1,6 +1,6 @@
-use sodium::Dep;
-use sodium::SodiumCtx;
-use sodium::WeakSodiumCtx;
+use sodium::impl_::Dep;
+use sodium::impl_::SodiumCtx;
+use sodium::impl_::WeakSodiumCtx;
 use sodium::gc::Finalize;
 use sodium::gc::Gc;
 use sodium::gc::GcDep;

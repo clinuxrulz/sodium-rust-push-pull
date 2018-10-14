@@ -1,6 +1,6 @@
-use sodium::gc::Finalize;
-use sodium::gc::GcDep;
-use sodium::gc::Trace;
+use sodium::impl_::gc::Finalize;
+use sodium::impl_::gc::GcDep;
+use sodium::impl_::gc::Trace;
 use std::cell::UnsafeCell;
 use std::rc::Rc;
 

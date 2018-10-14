@@ -9,7 +9,7 @@ fn map_c() {
     let mut sodium_ctx = SodiumCtx::new();
     let sodium_ctx = &mut sodium_ctx;
     {
-        let c = CellSink::new(sodium_ctx, 6);
+        let c = sodium_ctx.new_cell_sink(6);
         let c2 = c.to_cell();
         let out = Rc::new(RefCell::new(Vec::new()));
         let l;
