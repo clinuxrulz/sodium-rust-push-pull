@@ -81,7 +81,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         {
             let self_ = self_.clone();
             let callback = callback.clone();
-            sodium_ctx.pre_trans(move || {
+            sodium_ctx.pre(move || {
                 let callback = unsafe { &mut *(*callback).get() };
                 (*callback)(&self_.sample_no_trans());
             });

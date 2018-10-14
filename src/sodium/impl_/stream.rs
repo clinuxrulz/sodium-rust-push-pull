@@ -83,7 +83,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
             let callback = callback.clone();
             let value_op = self_.peek_value();
             if let Some(value) = value_op {
-                sodium_ctx.pre_trans(move || {
+                sodium_ctx.pre(move || {
                     let callback = unsafe { &mut *(*callback).get() };
                     (*callback)(&value);
                 });

@@ -19,7 +19,8 @@ pub struct SodiumCtxData {
     pub next_id: u32,
     pub transaction_depth: u32,
     pub to_be_updated: BinaryHeap<Node>,
-    pub pre_trans: Vec<Box<FnMut()>>
+    pub pre_trans: Vec<Box<FnMut()>>,
+    pub post_trans: Vec<Box<FnMut()>>
 }
 
 impl SodiumCtx {
@@ -30,7 +31,8 @@ impl SodiumCtx {
                 next_id: 0,
                 transaction_depth: 0,
                 to_be_updated: BinaryHeap::new(),
-                pre_trans: Vec::new()
+                pre_trans: Vec::new(),
+                post_trans: Vec::new()
             }))
         }
     }
@@ -53,9 +55,14 @@ impl SodiumCtx {
         id
     }
 
-    pub fn pre_trans<F: FnMut() + 'static>(&self, f: F) {
+    pub fn pre<F: FnMut() + 'static>(&self, f: F) {
         let self_ = unsafe { &mut *(*self.data).get() };
         self_.pre_trans.push(Box::new(f));
+    }
+
+    pub fn post<F: FnMut() + 'static>(&self, f: F) {
+        let self_ = unsafe { &mut *(*self.data).get() };
+        self_.post_trans.push(Box::new(f));
     }
 
     pub fn transaction<A,CODE:FnOnce()->A>(&self, code: CODE)->A {
@@ -87,11 +94,34 @@ impl SodiumCtx {
                 None => break
             }
         }
+        {
+            let mut post_trans = Vec::new();
+            swap(&mut self_.post_trans, &mut post_trans);
+            for mut f in post_trans {
+                f();
+            }
+        }
     }
 }
 
 impl WeakSodiumCtx {
     pub fn upgrade(&self) -> Option<SodiumCtx> {
         self.data.upgrade().map(|data| SodiumCtx { data })
+    }
+}
+
+impl Clone for SodiumCtx {
+    fn clone(&self) -> Self {
+        SodiumCtx {
+            data: self.data.clone()
+        }
+    }
+}
+
+impl Clone for WeakSodiumCtx {
+    fn clone(&self) -> Self {
+        WeakSodiumCtx {
+            data: self.data.clone()
+        }
     }
 }

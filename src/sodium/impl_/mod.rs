@@ -16,6 +16,7 @@ pub use self::sodium_ctx::SodiumCtx;
 pub use self::sodium_ctx::SodiumCtxData;
 pub use self::sodium_ctx::WeakSodiumCtx;
 pub use self::stream::Stream;
+pub use self::stream_sink::StreamSink;
 
 mod cell;
 mod cell_sink;
@@ -31,3 +32,4 @@ mod memo_lazy;
 mod node;
 mod sodium_ctx;
 mod stream;
+mod stream_sink;

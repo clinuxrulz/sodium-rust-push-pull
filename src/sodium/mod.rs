@@ -2,6 +2,7 @@ pub use self::cell::Cell;
 pub use self::cell_sink::CellSink;
 pub use self::sodium_ctx::SodiumCtx;
 pub use self::stream::Stream;
+pub use self::stream_sink::StreamSink;
 pub use self::impl_::Dep;
 pub use self::impl_::Lambda;
 pub use self::impl_::Listener;
@@ -21,3 +22,4 @@ mod impl_;
 
 mod sodium_ctx;
 mod stream;
+mod stream_sink;
