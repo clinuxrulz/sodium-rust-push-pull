@@ -1,5 +1,4 @@
 use sodium::gc::GcCtx;
-use sodium::gc::GcWeak;
 use sodium::Node;
 use std::cell::UnsafeCell;
 use std::collections::BinaryHeap;
@@ -19,7 +18,8 @@ pub struct SodiumCtxData {
     pub gc_ctx: GcCtx,
     pub next_id: u32,
     pub transaction_depth: u32,
-    pub to_be_updated: BinaryHeap<Node>
+    pub to_be_updated: BinaryHeap<Node>,
+    pub pre_trans: Vec<Box<FnMut()>>
 }
 
 impl SodiumCtx {
@@ -29,7 +29,8 @@ impl SodiumCtx {
                 gc_ctx: GcCtx::new(),
                 next_id: 0,
                 transaction_depth: 0,
-                to_be_updated: BinaryHeap::new()
+                to_be_updated: BinaryHeap::new(),
+                pre_trans: Vec::new()
             }))
         }
     }
@@ -52,6 +53,11 @@ impl SodiumCtx {
         id
     }
 
+    pub fn pre_trans<F: FnMut() + 'static>(&self, f: F) {
+        let self_ = unsafe { &mut *(*self.data).get() };
+        self_.pre_trans.push(Box::new(f));
+    }
+
     pub fn transaction<A,CODE:FnOnce()->A>(&self, code: CODE)->A {
         let self_ = unsafe { &mut *(*self.data).get() };
         self_.transaction_depth = self_.transaction_depth + 1;
@@ -65,6 +71,13 @@ impl SodiumCtx {
 
     fn propergate(&self) {
         let self_ = unsafe { &mut *(*self.data).get() };
+        {
+            let mut pre_trans = Vec::new();
+            swap(&mut self_.pre_trans, &mut pre_trans);
+            for mut f in pre_trans {
+                f();
+            }
+        }
         loop {
             let node_op = self_.to_be_updated.pop();
             match node_op {

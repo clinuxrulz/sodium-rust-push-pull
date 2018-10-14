@@ -216,7 +216,7 @@ impl Ord for Node {
     fn cmp(&self, other: &Node) -> Ordering {
         let self_ = unsafe { &*(*self).data.get() };
         let other = unsafe { &*(*other).data.get() };
-        self_.rank.cmp(&other.rank)
+        self_.rank.cmp(&other.rank).reverse()
     }
 }
 

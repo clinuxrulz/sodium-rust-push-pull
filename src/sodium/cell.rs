@@ -76,12 +76,21 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
     ) -> Listener {
         let sodium_ctx = self.node.sodium_ctx();
         let sodium_ctx = &sodium_ctx;
-        let mut callback = Box::new(callback);
+        let callback = Rc::new(UnsafeCell::new(callback));
         let self_ = self.clone();
+        {
+            let self_ = self_.clone();
+            let callback = callback.clone();
+            sodium_ctx.pre_trans(move || {
+                let callback = unsafe { &mut *(*callback).get() };
+                (*callback)(&self_.sample_no_trans());
+            });
+        }
         Listener::new(Node::new(
             sodium_ctx,
             move || {
-                callback(&self_.sample_no_trans())
+                let callback = unsafe { &mut *(*callback).get() };
+                (*callback)(&self_.sample_no_trans());
             },
             Vec::new(),
             vec![self.node.clone()],
