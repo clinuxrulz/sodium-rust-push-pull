@@ -70,6 +70,38 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         }
     }
 
+    pub fn filter<PRED:IsLambda1<A,bool> + 'static>(&self, pred: PRED) -> Stream<A> {
+        let sodium_ctx = self.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        let mut gc_ctx = sodium_ctx.gc_ctx();
+        let update_deps = pred.deps();
+        let pred = Rc::new(pred);
+        let self_ = self.clone();
+        let self_2 = self.clone();
+        let latch = gc_ctx.new_gc(UnsafeCell::new(Latch::new(
+            move || {
+                let self_ = self_.clone();
+                let pred = pred.clone();
+                MemoLazy::new(move || {
+                    self_.peek_value().filter(|value| pred.apply(value))
+                })
+            }
+        )));
+        Stream {
+            value: latch.clone(),
+            node: Node::new(
+                sodium_ctx,
+                move || {
+                    let latch = unsafe { &mut *(*latch).get() };
+                    latch.reset();
+                },
+                update_deps,
+                vec![self_2.node.clone()],
+                || {}
+            )
+        }
+    }
+
     pub fn listen<CALLBACK:FnMut(&A)+'static>(
         &self,
         callback: CALLBACK

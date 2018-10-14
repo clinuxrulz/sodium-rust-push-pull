@@ -20,6 +20,12 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         }
     }
 
+    pub fn filter<PRED:IsLambda1<A,bool> + 'static>(&self, pred: PRED) -> Stream<A> {
+        Stream {
+            impl_: self.impl_.filter(pred)
+        }
+    }
+
     pub fn listen<CALLBACK:FnMut(&A)+'static>(
         &self,
         callback: CALLBACK
