@@ -85,7 +85,7 @@ impl Node {
                     rank,
                     update: Box::new(update),
                     update_dependencies,
-                    dependencies,
+                    dependencies: dependencies.clone(),
                     dependents: Vec::new(),
                     cleanup: Box::new(cleanup2),
                     weak_sodium_ctx: sodium_ctx.downgrade()
@@ -95,6 +95,11 @@ impl Node {
         unsafe {
             *(*self_).get() = Some(node.clone());
         };
+        let weak_node = node.downgrade();
+        for dependency in &dependencies {
+            let dependency = unsafe { &mut *(*dependency.data).get() };
+            dependency.dependents.push(weak_node.clone());
+        }
         node
     }
 
@@ -153,6 +158,12 @@ impl Node {
         let self_ = unsafe { &*(*self.data).get() };
         self_.weak_sodium_ctx.upgrade().unwrap()
     }
+
+    pub fn downgrade(&self) -> WeakNode {
+        WeakNode {
+            data: self.data.downgrade()
+        }
+    }
 }
 
 impl WeakNode {
@@ -164,6 +175,14 @@ impl WeakNode {
 impl Clone for Node {
     fn clone(&self) -> Self {
         Node {
+            data: self.data.clone()
+        }
+    }
+}
+
+impl Clone for WeakNode {
+    fn clone(&self) -> Self {
+        WeakNode {
             data: self.data.clone()
         }
     }
