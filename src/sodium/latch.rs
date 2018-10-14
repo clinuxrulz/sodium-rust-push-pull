@@ -1,9 +1,30 @@
+use sodium::gc::Finalize;
+use sodium::gc::GcDep;
+use sodium::gc::Trace;
 use sodium::MemoLazy;
 use std::rc::Rc;
 
 pub struct Latch<A> {
     thunk: Rc<Fn()->MemoLazy<A>>,
     val: MemoLazy<A>
+}
+
+impl<A: Trace> Trace for Latch<A> {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {
+        self.val.trace(f);
+    }
+}
+
+impl<A: Finalize> Finalize for Latch<A> {
+    fn finalize(&mut self) {
+        self.val.finalize();
+    }
+}
+
+impl<A:Clone + 'static> Latch<A> {
+    pub fn const_(value:  MemoLazy<A>) -> Latch<A> {
+        Latch::new(move || value.clone())
+    }
 }
 
 impl<A> Latch<A> {

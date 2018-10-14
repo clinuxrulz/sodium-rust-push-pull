@@ -1,4 +1,5 @@
 use sodium::Cell;
+use sodium::Latch;
 use sodium::MemoLazy;
 use sodium::Node;
 use sodium::SodiumCtx;
@@ -9,15 +10,15 @@ use std::cell::UnsafeCell;
 use std::mem::swap;
 
 pub struct CellSink<A> {
-    value: Gc<UnsafeCell<MemoLazy<A>>>,
-    next_value_op: Gc<UnsafeCell<Option<MemoLazy<A>>>>,
+    value: Gc<UnsafeCell<Latch<A>>>,
+    next_value_op: Gc<UnsafeCell<Option<Latch<A>>>>,
     node: Node
 }
 
 impl<A: Trace + Finalize + Clone + 'static> CellSink<A> {
     pub fn new(sodium_ctx: &SodiumCtx, value: A) -> CellSink<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
-        let value = gc_ctx.new_gc(UnsafeCell::new(MemoLazy::new(move || value.clone())));
+        let value = gc_ctx.new_gc(UnsafeCell::new(Latch::const_(MemoLazy::new(move || value.clone()))));
         let next_value_op = gc_ctx.new_gc(UnsafeCell::new(None));
         CellSink {
             value: value.clone(),
@@ -47,7 +48,7 @@ impl<A: Trace + Finalize + Clone + 'static> CellSink<A> {
         let sodium_ctx = self.node.sodium_ctx();
         sodium_ctx.transaction(|| {
             let next_value_op = unsafe { &mut *(*self.next_value_op).get() };
-            *next_value_op = Some(MemoLazy::new(move || value.clone()));
+            *next_value_op = Some(Latch::const_(MemoLazy::new(move || value.clone())));
             self.node.mark_dirty();
         });
     }

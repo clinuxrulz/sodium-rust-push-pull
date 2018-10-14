@@ -1,4 +1,5 @@
 use sodium::IsLambda1;
+use sodium::Latch;
 use sodium::Listener;
 use sodium::MemoLazy;
 use sodium::Node;
@@ -10,7 +11,7 @@ use std::cell::UnsafeCell;
 use std::rc::Rc;
 
 pub struct Cell<A> {
-    pub value: Gc<UnsafeCell<MemoLazy<A>>>,
+    pub value: Gc<UnsafeCell<Latch<A>>>,
     pub node: Node
 }
 
@@ -18,7 +19,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
     pub fn new(sodium_ctx: &SodiumCtx, value: A) -> Cell<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
         Cell {
-            value: gc_ctx.new_gc(UnsafeCell::new(MemoLazy::new(move || value.clone()))),
+            value: gc_ctx.new_gc(UnsafeCell::new(Latch::const_(MemoLazy::new(move || value.clone())))),
             node: Node::new(
                 sodium_ctx,
                 || {},
@@ -31,7 +32,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
 
     fn sample_no_trans(&self) -> A {
         let thunk = unsafe { &*(*self.value).get() };
-        thunk.get().clone()
+        thunk.get().get().clone()
     }
 
     pub fn map<B: Clone + Trace + Finalize + 'static,F:IsLambda1<A,B> + 'static>(
@@ -44,22 +45,23 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         let update_deps = f.deps();
         let f = Rc::new(f);
         let self_ = self.clone();
-        let self_2 = self_.clone();
-        let rvalue;
-        {
-            let f = f.clone();
-            rvalue = gc_ctx.new_gc(UnsafeCell::new(MemoLazy::new(move || f.apply(&self_.sample_no_trans()))));
-        }
-        let self_3 = self_2.clone();
+        let self_2 = self.clone();
+        let rval_latch = gc_ctx.new_gc(UnsafeCell::new(Latch::new(
+            move || {
+                let self_ = self_.clone();
+                let f = f.clone();
+                MemoLazy::new(move || {
+                    f.apply(&self_.sample_no_trans())
+                })
+            }
+        )));
         Cell {
-            value: rvalue.clone(),
+            value: rval_latch.clone(),
             node: Node::new(
                 sodium_ctx,
                 move || {
-                    let thunk = unsafe { &mut *(*rvalue).get() };
-                    let self_3 = self_3.clone();
-                    let f = f.clone();
-                    *thunk = MemoLazy::new(move || f.apply(&self_3.sample_no_trans()));
+                    let rval_latch = unsafe { &mut *(*rval_latch).get() };
+                    rval_latch.reset();
                 },
                 update_deps,
                 vec![self_2.node.clone()],
