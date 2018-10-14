@@ -237,8 +237,8 @@ impl<A:Trace> Trace for UnsafeCell<A> {
 
 impl<A: Finalize> Finalize for Gc<A> {
     fn finalize(&mut self) {
-        let self2: &mut A = unsafe { &mut *self.value };
-        self2.finalize();
+        // Already handled by the finalize for A when Gc is finished,
+        // do nothing here.
     }
 }
 

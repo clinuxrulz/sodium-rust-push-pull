@@ -23,6 +23,17 @@ pub struct SodiumCtxData {
 }
 
 impl SodiumCtx {
+    pub fn new() -> SodiumCtx {
+        SodiumCtx {
+            data: Rc::new(UnsafeCell::new(SodiumCtxData {
+                gc_ctx: GcCtx::new(),
+                next_id: 0,
+                transaction_depth: 0,
+                to_be_updated: BinaryHeap::new()
+            }))
+        }
+    }
+
     pub fn gc_ctx(&self) -> GcCtx {
         let self_ = unsafe { &*(*self.data).get() };
         self_.gc_ctx.clone()
