@@ -9,6 +9,14 @@ pub struct Stream<A> {
     pub impl_: impl_::Stream<A>
 }
 
+impl<A: Clone + Trace + Finalize + 'static> Stream<Option<A>> {
+    pub fn filter_option(&self) -> Stream<A> {
+        Stream {
+            impl_: self.impl_.filter_option()
+        }
+    }
+}
+
 impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
 
     pub fn map<B: Clone + Trace + Finalize + 'static,F:IsLambda1<A,B> + 'static>(

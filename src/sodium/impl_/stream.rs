@@ -15,6 +15,37 @@ pub struct Stream<A> {
     pub node: Node
 }
 
+impl<A: Clone + Trace + Finalize + 'static> Stream<Option<A>> {
+    pub fn filter_option(&self) -> Stream<A> {
+        let sodium_ctx = self.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        let mut gc_ctx = sodium_ctx.gc_ctx();
+        let self_ = self.clone();
+        let self_2 = self.clone();
+        let latch = gc_ctx.new_gc(UnsafeCell::new(Latch::new(
+            move || {
+                let self_ = self_.clone();
+                MemoLazy::new(move || {
+                    self_.peek_value().unwrap_or(None)
+                })
+            }
+        )));
+        Stream {
+            value: latch.clone(),
+            node: Node::new(
+                sodium_ctx,
+                move || {
+                    let latch = unsafe { &mut *(*latch).get() };
+                    latch.reset();
+                },
+                Vec::new(),
+                vec![self_2.node.clone()],
+                || {}
+            )
+        }
+    }
+}
+
 impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     pub fn new(sodium_ctx: &SodiumCtx) -> Stream<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
