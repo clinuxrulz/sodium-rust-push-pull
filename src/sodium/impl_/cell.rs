@@ -75,6 +75,10 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         }
     }
 
+    pub fn apply<B,F: IsLambda1<A,B> + Trace + Finalize + Clone + 'static>(&self, cf: Cell<F>) -> Cell<B> where B: Trace + Finalize + Clone + 'static {
+        self.lift2(cf, |a: &A, f: &F| f.apply(a))
+    }
+
     pub fn lift2<B,C,F: IsLambda2<A,B,C> + 'static>(&self, cb: Cell<B>, f: F) -> Cell<C> where B: Clone + Trace + Finalize + 'static, C: Clone + Trace + Finalize + 'static {
         let sodium_ctx = self.node.sodium_ctx();
         let sodium_ctx = &sodium_ctx;

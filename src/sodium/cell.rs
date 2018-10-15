@@ -24,6 +24,12 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         }
     }
 
+    pub fn apply<B,F: IsLambda1<A,B> + Trace + Finalize + Clone + 'static>(&self, cf: Cell<F>) -> Cell<B> where B: Trace + Finalize + Clone + 'static {
+        Cell {
+            impl_: self.impl_.apply(cf.impl_)
+        }
+    }
+
     pub fn lift2<B,C,F: IsLambda2<A,B,C> + 'static>(&self, cb: Cell<B>, f: F) -> Cell<C> where B: Clone + Trace + Finalize + 'static, C: Clone + Trace + Finalize + 'static {
         Cell {
             impl_: self.impl_.lift2(cb.impl_, f)
