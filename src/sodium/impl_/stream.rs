@@ -1,4 +1,7 @@
+use sodium::impl_::Cell;
 use sodium::impl_::IsLambda1;
+use sodium::impl_::IsLambda2;
+use sodium::impl_::Lambda;
 use sodium::impl_::Latch;
 use sodium::impl_::Listener;
 use sodium::impl_::MemoLazy;
@@ -131,6 +134,11 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                 || {}
             )
         }
+    }
+
+    pub fn snapshot2<B,C,FN:IsLambda2<A,B,C> + 'static>(&self, cb: Cell<B>, f: FN) -> Stream<C> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static {
+        let deps = f.deps();
+        self.map(Lambda::new(Box::new(move |a: &A| f.apply(a, &cb.sample_no_trans())), deps))
     }
 
     pub fn listen<CALLBACK:FnMut(&A)+'static>(

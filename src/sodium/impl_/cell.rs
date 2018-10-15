@@ -35,7 +35,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         }
     }
 
-    fn sample_no_trans(&self) -> A {
+    pub fn sample_no_trans(&self) -> A {
         let thunk = unsafe { &*(*self.value).get() };
         thunk.get().get().clone()
     }

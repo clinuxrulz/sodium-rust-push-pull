@@ -1,4 +1,6 @@
+use sodium::Cell;
 use sodium::IsLambda1;
+use sodium::IsLambda2;
 use sodium::Listener;
 use sodium::SodiumCtx;
 use sodium::gc::Finalize;
@@ -31,6 +33,12 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     pub fn filter<PRED:IsLambda1<A,bool> + 'static>(&self, pred: PRED) -> Stream<A> {
         Stream {
             impl_: self.impl_.filter(pred)
+        }
+    }
+
+    pub fn snapshot2<B,C,FN:IsLambda2<A,B,C> + 'static>(&self, cb: Cell<B>, f: FN) -> Stream<C> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static {
+        Stream {
+            impl_: self.impl_.snapshot2(cb.impl_, f)
         }
     }
 
