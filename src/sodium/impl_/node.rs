@@ -26,7 +26,7 @@ pub struct WeakNode {
 pub struct NodeData {
     id: u32,
     rank: u32,
-    update: Box<FnMut()>,
+    update: Box<FnMut()->bool>,
     update_dependencies: Vec<Dep>,
     dependencies: Vec<Node>,
     dependents: Vec<WeakNode>,
@@ -35,7 +35,7 @@ pub struct NodeData {
 }
 
 impl Node {
-    pub fn new<UPDATE: FnMut() + 'static, CLEANUP: FnMut() + 'static>(
+    pub fn new<UPDATE: FnMut()->bool + 'static, CLEANUP: FnMut() + 'static>(
         sodium_ctx: &SodiumCtx,
         update: UPDATE,
         update_dependencies: Vec<Dep>,
@@ -103,28 +103,30 @@ impl Node {
         node
     }
 
-    pub fn mark_dirty(&self) {
-        self.mark_dirty2(&mut HashSet::new());
-    }
-
-    fn mark_dirty2(&self, visited: &mut HashSet<u32>) {
+    pub fn mark_dependents_dirty(&self) {
         let self_ = unsafe { &*(*self).data.get() };
-        if visited.contains(&self_.id) {
-            return;
-        }
-        visited.insert(self_.id);
         match self_.weak_sodium_ctx.upgrade() {
             Some(sodium_ctx) => {
                 let sodium_ctx = unsafe { &mut *(*sodium_ctx.data).get() };
-                sodium_ctx.to_be_updated.push(self.clone())
+                self_.dependents.iter().for_each(|dependent| {
+                    dependent.upgrade().iter().for_each(|dependent| {
+                        sodium_ctx.to_be_updated.push(dependent.clone());
+                    });
+                });
             },
             None => ()
         }
-        self_.dependents.iter().for_each(|dependent| {
-            dependent.upgrade().iter().for_each(|dependent| {
-                dependent.mark_dirty2(visited);
-            });
-        });
+    }
+
+    pub fn mark_dirty(&self) {
+        let self_ = unsafe { &*(*self).data.get() };
+        match self_.weak_sodium_ctx.upgrade() {
+            Some(sodium_ctx) => {
+                let sodium_ctx = unsafe { &mut *(*sodium_ctx.data).get() };
+                sodium_ctx.to_be_updated.push(self.clone());
+            },
+            None => ()
+        }
     }
 
     pub fn ensure_bigger_than(&self, rank: u32) {
@@ -149,9 +151,9 @@ impl Node {
         })
     }
 
-    pub fn update(&self) {
+    pub fn update(&self)->bool {
         let self_ = unsafe { &mut *(*self.data).get() };
-        (self_.update)();
+        (self_.update)()
     }
 
     pub fn sodium_ctx(&self) -> SodiumCtx {

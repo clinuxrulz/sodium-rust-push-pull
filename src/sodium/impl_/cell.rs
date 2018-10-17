@@ -27,7 +27,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
             value: gc_ctx.new_gc(UnsafeCell::new(Latch::const_(MemoLazy::new(move || value.clone())))),
             node: Node::new(
                 sodium_ctx,
-                || {},
+                || false,
                 Vec::new(),
                 Vec::new(),
                 || {}
@@ -67,6 +67,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 move || {
                     let rval_latch = unsafe { &mut *(*rval_latch).get() };
                     rval_latch.reset();
+                    return true;
                 },
                 update_deps,
                 vec![self_2.node.clone()],
@@ -108,6 +109,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 move || {
                     let latch = unsafe { &mut *(*latch).get() };
                     latch.reset();
+                    return true;
                 },
                 update_deps,
                 vec![self_2.node.clone(), cb.node.clone()],
@@ -147,6 +149,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 move || {
                     let latch = unsafe { &mut *(*latch).get() };
                     latch.reset();
+                    return true;
                 },
                 update_deps,
                 vec![self_2.node.clone(), cb.node.clone(), cc.node.clone()],
@@ -188,6 +191,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 move || {
                     let latch = unsafe { &mut *(*latch).get() };
                     latch.reset();
+                    return true;
                 },
                 update_deps,
                 vec![self_2.node.clone(), cb.node.clone(), cc.node.clone(), cd.node.clone()],
@@ -231,6 +235,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 move || {
                     let latch = unsafe { &mut *(*latch).get() };
                     latch.reset();
+                    return true;
                 },
                 update_deps,
                 vec![self_2.node.clone(), cb.node.clone(), cc.node.clone(), cd.node.clone(), ce.node.clone()],
@@ -276,6 +281,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 move || {
                     let latch = unsafe { &mut *(*latch).get() };
                     latch.reset();
+                    return true;
                 },
                 update_deps,
                 vec![self_2.node.clone(), cb.node.clone(), cc.node.clone(), cd.node.clone(), ce.node.clone()],
@@ -305,6 +311,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
             move || {
                 let callback = unsafe { &mut *(*callback).get() };
                 (*callback)(&self_.sample_no_trans());
+                return true;
             },
             Vec::new(),
             vec![self.node.clone()],

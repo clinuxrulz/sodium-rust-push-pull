@@ -36,6 +36,7 @@ impl<A: Trace + Finalize + Clone + 'static> CellSink<A> {
                         },
                         None => ()
                     }
+                    return true;
                 },
                 Vec::new(),
                 Vec::new(),

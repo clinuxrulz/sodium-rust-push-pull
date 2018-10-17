@@ -40,6 +40,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<Option<A>> {
                 move || {
                     let latch = unsafe { &mut *(*latch).get() };
                     latch.reset();
+                    return true;
                 },
                 Vec::new(),
                 vec![self_2.node.clone()],
@@ -56,7 +57,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
             value: gc_ctx.new_gc(UnsafeCell::new(Latch::const_(MemoLazy::new(move || None)))),
             node: Node::new(
                 sodium_ctx,
-                || {},
+                || false,
                 Vec::new(),
                 Vec::new(),
                 || {}
@@ -96,6 +97,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                 move || {
                     let rval_latch = unsafe { &mut *(*rval_latch).get() };
                     rval_latch.reset();
+                    return true;
                 },
                 update_deps,
                 vec![self_2.node.clone()],
@@ -128,6 +130,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                 move || {
                     let latch = unsafe { &mut *(*latch).get() };
                     latch.reset();
+                    return true;
                 },
                 update_deps,
                 vec![self_2.node.clone()],
@@ -168,6 +171,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                 if let Some(value) = value_op {
                     (*callback)(&value);
                 }
+                return false;
             },
             Vec::new(),
             vec![self.node.clone()],

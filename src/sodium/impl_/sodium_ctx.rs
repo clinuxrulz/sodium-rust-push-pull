@@ -89,7 +89,10 @@ impl SodiumCtx {
             let node_op = self_.to_be_updated.pop();
             match node_op {
                 Some(node) => {
-                    node.update();
+                    let mark_dependents_dirty = node.update();
+                    if mark_dependents_dirty {
+                        node.mark_dependents_dirty();
+                    }
                 },
                 None => break
             }

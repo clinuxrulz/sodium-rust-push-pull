@@ -35,6 +35,7 @@ impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
                     if let Some(next_value) = next_value_op {
                         *value = next_value.clone();
                     }
+                    return true;
                 },
                 Vec::new(),
                 Vec::new(),
