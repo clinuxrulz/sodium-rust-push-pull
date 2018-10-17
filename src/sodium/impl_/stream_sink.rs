@@ -11,8 +11,8 @@ use std::mem::swap;
 use std::rc::Rc;
 
 pub struct StreamSink<A> {
-    value: Gc<UnsafeCell<Latch<MemoLazy<Option<A>>>>>,
-    next_value_op: Gc<UnsafeCell<Option<Latch<MemoLazy<Option<A>>>>>>,
+    value: Gc<UnsafeCell<Latch<Option<MemoLazy<A>>>>>,
+    next_value_op: Gc<UnsafeCell<Option<Latch<Option<MemoLazy<A>>>>>>,
     node: Node,
     will_clear: Rc<UnsafeCell<bool>>
 }
@@ -20,7 +20,7 @@ pub struct StreamSink<A> {
 impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
     pub fn new(sodium_ctx: &SodiumCtx) -> StreamSink<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
-        let value = gc_ctx.new_gc(UnsafeCell::new(Latch::const_(MemoLazy::new(|| None))));
+        let value = gc_ctx.new_gc(UnsafeCell::new(Latch::const_(None)));
         let next_value_op = gc_ctx.new_gc(UnsafeCell::new(None));
         StreamSink {
             value: value.clone(),
@@ -56,12 +56,12 @@ impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
                 sodium_ctx.post(move || {
                     let value = unsafe { &mut *(*self_.value).get() };
                     let will_clear = unsafe { &mut *(*self_.will_clear).get() };
-                    *value = Latch::const_(MemoLazy::new(|| None));
+                    *value = Latch::const_(None);
                     *will_clear = false;
                 });
             }
             let next_value_op = unsafe { &mut *(*self.next_value_op).get() };
-            *next_value_op = Some(Latch::const_(MemoLazy::new(move || Some(value.clone()))));
+            *next_value_op = Some(Latch::const_(Some(MemoLazy::new(move || value.clone()))));
             self.node.mark_dirty();
         });
     }

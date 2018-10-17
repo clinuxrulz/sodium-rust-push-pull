@@ -19,7 +19,7 @@ use std::cell::UnsafeCell;
 use std::rc::Rc;
 
 pub struct Stream<A> {
-    pub value: Gc<UnsafeCell<Latch<MemoLazy<Option<A>>>>>,
+    pub value: Gc<UnsafeCell<Latch<Option<MemoLazy<A>>>>>,
     pub node: Node
 }
 
@@ -33,9 +33,15 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<Option<A>> {
         let latch = gc_ctx.new_gc(UnsafeCell::new(Latch::new(
             move || {
                 let self_ = self_.clone();
-                MemoLazy::new(move || {
-                    self_.peek_value().unwrap_or(None)
-                })
+                let val_op_op = self_.peek_value();
+                match val_op_op {
+                    Some(val_op) => {
+                        val_op.get().clone().map(|val| {
+                            MemoLazy::new(move || val.clone())
+                        })
+                    },
+                    None => None
+                }
             }
         )));
         Stream {
@@ -59,7 +65,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     pub fn new(sodium_ctx: &SodiumCtx) -> Stream<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
         Stream {
-            value: gc_ctx.new_gc(UnsafeCell::new(Latch::const_(MemoLazy::new(move || None)))),
+            value: gc_ctx.new_gc(UnsafeCell::new(Latch::const_(None))),
             node: Node::new(
                 sodium_ctx,
                 || false,
@@ -74,9 +80,9 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         self.node.to_dep()
     }
 
-    fn peek_value(&self) -> Option<A> {
+    fn peek_value(&self) -> Option<MemoLazy<A>> {
         let thunk = unsafe { &*(*self.value).get() };
-        thunk.get().get().clone()
+        thunk.get().clone()
     }
 
     pub fn map<B: Clone + Trace + Finalize + 'static,F:IsLambda1<A,B> + 'static>(
@@ -94,8 +100,8 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
             move || {
                 let self_ = self_.clone();
                 let f = f.clone();
-                MemoLazy::new(move || {
-                    self_.peek_value().map(|value| f.apply(&value))
+                self_.peek_value().map(|val| {
+                    MemoLazy::new(move || f.apply(val.get()))
                 })
             }
         )));
@@ -127,9 +133,18 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
             move || {
                 let self_ = self_.clone();
                 let pred = pred.clone();
-                MemoLazy::new(move || {
-                    self_.peek_value().filter(|value| pred.apply(value))
-                })
+                match self_.peek_value() {
+                    Some(val) => {
+                        let val = val.get();
+                        if pred.apply(val) {
+                            let val = val.clone();
+                            Some(MemoLazy::new(move || val.clone()))
+                        } else {
+                            None
+                        }
+                    },
+                    None => None
+                }
             }
         )));
         Stream {
@@ -208,7 +223,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
             if let Some(value) = value_op {
                 sodium_ctx.pre(move || {
                     let callback = unsafe { &mut *(*callback).get() };
-                    (*callback)(&value);
+                    (*callback)(value.get());
                 });
             }
         }
@@ -218,7 +233,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                 let callback = unsafe { &mut *(*callback).get() };
                 let value_op = self_.peek_value();
                 if let Some(value) = value_op {
-                    (*callback)(&value);
+                    (*callback)(value.get());
                 }
                 return false;
             },
