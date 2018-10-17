@@ -1,3 +1,4 @@
+use sodium::Dep;
 use sodium::IsLambda1;
 use sodium::IsLambda2;
 use sodium::IsLambda3;
@@ -14,6 +15,10 @@ pub struct Cell<A> {
 }
 
 impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
+
+    pub fn to_dep(&self) -> Dep {
+        self.impl_.to_dep()
+    }
 
     pub fn map<B: Clone + Trace + Finalize + 'static,F:IsLambda1<A,B> + 'static>(
         &self,
