@@ -1,6 +1,11 @@
 use sodium::impl_::Cell;
+use sodium::impl_::Dep;
 use sodium::impl_::IsLambda1;
 use sodium::impl_::IsLambda2;
+use sodium::impl_::IsLambda3;
+use sodium::impl_::IsLambda4;
+use sodium::impl_::IsLambda5;
+use sodium::impl_::IsLambda6;
 use sodium::impl_::Lambda;
 use sodium::impl_::Latch;
 use sodium::impl_::Listener;
@@ -63,6 +68,10 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                 || {}
             )
         }
+    }
+
+    pub fn to_dep(&self) -> Dep {
+        self.node.to_dep()
     }
 
     fn peek_value(&self) -> Option<A> {
@@ -139,9 +148,49 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         }
     }
 
+    pub fn snapshot<B>(&self, cb: Cell<B>) -> Stream<B> where B: Trace + Finalize + Clone + 'static {
+        let deps = vec![cb.to_dep()];
+        self.map(Lambda::new(Box::new(move |_a: &A| cb.sample_no_trans()), deps))
+    }
+
     pub fn snapshot2<B,C,FN:IsLambda2<A,B,C> + 'static>(&self, cb: Cell<B>, f: FN) -> Stream<C> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static {
-        let deps = f.deps();
+        let mut deps = f.deps();
+        deps.push(cb.to_dep());
         self.map(Lambda::new(Box::new(move |a: &A| f.apply(a, &cb.sample_no_trans())), deps))
+    }
+
+    pub fn snapshot3<B,C,D,FN:IsLambda3<A,B,C,D> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, f: FN) -> Stream<D> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static {
+        let mut deps = f.deps();
+        deps.push(cb.to_dep());
+        deps.push(cc.to_dep());
+        self.map(Lambda::new(Box::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans())), deps))
+    }
+
+    pub fn snapshot4<B,C,D,E,FN:IsLambda4<A,B,C,D,E> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, cd: Cell<D>, f: FN) -> Stream<E> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static {
+        let mut deps = f.deps();
+        deps.push(cb.to_dep());
+        deps.push(cc.to_dep());
+        deps.push(cd.to_dep());
+        self.map(Lambda::new(Box::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans(), &cd.sample_no_trans())), deps))
+    }
+
+    pub fn snapshot5<B,C,D,E,F,FN:IsLambda5<A,B,C,D,E,F> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, cd: Cell<D>, ce: Cell<E>, f: FN) -> Stream<F> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, F: Trace + Finalize + Clone + 'static {
+        let mut deps = f.deps();
+        deps.push(cb.to_dep());
+        deps.push(cc.to_dep());
+        deps.push(cd.to_dep());
+        deps.push(ce.to_dep());
+        self.map(Lambda::new(Box::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans(), &cd.sample_no_trans(), &ce.sample_no_trans())), deps))
+    }
+
+    pub fn snapshot6<B,C,D,E,F,G,FN:IsLambda6<A,B,C,D,E,F,G> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, cd: Cell<D>, ce: Cell<E>, cf: Cell<F>, f: FN) -> Stream<G> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, F: Trace + Finalize + Clone + 'static, G: Trace + Finalize + Clone + 'static {
+        let mut deps = f.deps();
+        deps.push(cb.to_dep());
+        deps.push(cc.to_dep());
+        deps.push(cd.to_dep());
+        deps.push(ce.to_dep());
+        deps.push(cf.to_dep());
+        self.map(Lambda::new(Box::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans(), &cd.sample_no_trans(), &ce.sample_no_trans(), &cf.sample_no_trans())), deps))
     }
 
     pub fn listen<CALLBACK:FnMut(&A)+'static>(

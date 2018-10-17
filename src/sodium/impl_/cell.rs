@@ -1,3 +1,4 @@
+use sodium::impl_::Dep;
 use sodium::impl_::IsLambda1;
 use sodium::impl_::IsLambda2;
 use sodium::impl_::IsLambda3;
@@ -33,6 +34,10 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 || {}
             )
         }
+    }
+
+    pub fn to_dep(&self) -> Dep {
+        self.node.to_dep()
     }
 
     pub fn sample_no_trans(&self) -> A {

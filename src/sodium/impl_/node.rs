@@ -103,6 +103,12 @@ impl Node {
         node
     }
 
+    pub fn to_dep(&self) -> Dep {
+        Dep {
+            gc_dep: self.data.to_dep()
+        }
+    }
+
     pub fn mark_dependents_dirty(&self) {
         let self_ = unsafe { &*(*self).data.get() };
         match self_.weak_sodium_ctx.upgrade() {
