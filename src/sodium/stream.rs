@@ -38,6 +38,12 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         }
     }
 
+    pub fn hold(&self, a: A) -> Cell<A> {
+        Cell {
+            impl_: self.impl_.hold(a)
+        }
+    }
+
     pub fn filter<PRED:IsLambda1<A,bool> + 'static>(&self, pred: PRED) -> Stream<A> {
         Stream {
             impl_: self.impl_.filter(pred)

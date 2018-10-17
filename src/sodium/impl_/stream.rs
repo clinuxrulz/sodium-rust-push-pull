@@ -121,6 +121,46 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         }
     }
 
+    pub fn hold(&self, a: A) -> Cell<A> {
+        let sodium_ctx = self.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        let mut gc_ctx = sodium_ctx.gc_ctx();
+        let val: Rc<UnsafeCell<MemoLazy<A>>>;
+        val = Rc::new(UnsafeCell::new(
+            match self.peek_value() {
+                Some(val) => val,
+                None => MemoLazy::new(move || a.clone())
+            }
+        ));
+        let latch;
+        {
+            let self_ = self.clone();
+            latch = gc_ctx.new_gc(UnsafeCell::new(Latch::new(move || {
+                let val: &mut MemoLazy<A> = unsafe { &mut *(*val).get() };
+                match self_.peek_value() {
+                    Some(val2) => *val = val2,
+                    None => ()
+                }
+                val.clone()
+            })));
+        }
+        let self_ = self.clone();
+        Cell {
+            value: latch.clone(),
+            node: Node::new(
+                sodium_ctx,
+                move || {
+                    let latch = unsafe { &mut *(*latch).get() };
+                    latch.reset();
+                    return self_.peek_value().is_some();
+                },
+                Vec::new(),
+                vec![self.node.clone()],
+                || {}
+            )
+        }
+    }
+
     pub fn filter<PRED:IsLambda1<A,bool> + 'static>(&self, pred: PRED) -> Stream<A> {
         let sodium_ctx = self.node.sodium_ctx();
         let sodium_ctx = &sodium_ctx;
