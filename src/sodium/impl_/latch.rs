@@ -5,8 +5,8 @@ use sodium::impl_::MemoLazy;
 use std::rc::Rc;
 
 pub struct Latch<A> {
-    thunk: Rc<Fn()->MemoLazy<A>>,
-    val: MemoLazy<A>
+    thunk: Rc<Fn()->A>,
+    val: A
 }
 
 impl<A: Trace> Trace for Latch<A> {
@@ -22,13 +22,13 @@ impl<A: Finalize> Finalize for Latch<A> {
 }
 
 impl<A:Clone + 'static> Latch<A> {
-    pub fn const_(value:  MemoLazy<A>) -> Latch<A> {
+    pub fn const_(value:  A) -> Latch<A> {
         Latch::new(move || value.clone())
     }
 }
 
 impl<A> Latch<A> {
-    pub fn new<F: Fn()->MemoLazy<A> + 'static>(thunk: F) -> Latch<A> {
+    pub fn new<F: Fn()->A + 'static>(thunk: F) -> Latch<A> {
         let val = thunk();
         Latch {
             thunk: Rc::new(thunk),
@@ -36,11 +36,11 @@ impl<A> Latch<A> {
         }
     }
 
-    pub fn get(&self) -> &MemoLazy<A> {
+    pub fn get(&self) -> &A {
         &self.val
     }
 
-    pub fn get_mut(&mut self) -> &mut MemoLazy<A> {
+    pub fn get_mut(&mut self) -> &mut A {
         &mut self.val
     }
 

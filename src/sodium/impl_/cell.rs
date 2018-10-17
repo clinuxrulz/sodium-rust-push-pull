@@ -17,7 +17,7 @@ use std::cell::UnsafeCell;
 use std::rc::Rc;
 
 pub struct Cell<A> {
-    pub value: Gc<UnsafeCell<Latch<A>>>,
+    pub value: Gc<UnsafeCell<Latch<MemoLazy<A>>>>,
     pub node: Node
 }
 

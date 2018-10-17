@@ -19,7 +19,7 @@ use std::cell::UnsafeCell;
 use std::rc::Rc;
 
 pub struct Stream<A> {
-    pub value: Gc<UnsafeCell<Latch<Option<A>>>>,
+    pub value: Gc<UnsafeCell<Latch<MemoLazy<Option<A>>>>>,
     pub node: Node
 }
 

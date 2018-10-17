@@ -10,8 +10,8 @@ use std::cell::UnsafeCell;
 use std::mem::swap;
 
 pub struct CellSink<A> {
-    value: Gc<UnsafeCell<Latch<A>>>,
-    next_value_op: Gc<UnsafeCell<Option<Latch<A>>>>,
+    value: Gc<UnsafeCell<Latch<MemoLazy<A>>>>,
+    next_value_op: Gc<UnsafeCell<Option<Latch<MemoLazy<A>>>>>,
     node: Node
 }
 

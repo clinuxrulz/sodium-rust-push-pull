@@ -11,8 +11,8 @@ use std::mem::swap;
 use std::rc::Rc;
 
 pub struct StreamSink<A> {
-    value: Gc<UnsafeCell<Latch<Option<A>>>>,
-    next_value_op: Gc<UnsafeCell<Option<Latch<Option<A>>>>>,
+    value: Gc<UnsafeCell<Latch<MemoLazy<Option<A>>>>>,
+    next_value_op: Gc<UnsafeCell<Option<Latch<MemoLazy<Option<A>>>>>>,
     node: Node,
     will_clear: Rc<UnsafeCell<bool>>
 }
