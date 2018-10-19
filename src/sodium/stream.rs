@@ -93,3 +93,11 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         self.impl_.listen(callback)
     }
 }
+
+impl<A: Clone + Trace + Finalize + 'static> Clone for Stream<A> {
+    fn clone(&self) -> Self {
+        Stream {
+            impl_: self.impl_.clone()
+        }
+    }
+}

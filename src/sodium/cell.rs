@@ -72,3 +72,11 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         self.impl_.listen(callback)
     }
 }
+
+impl<A: Clone + Trace + Finalize + 'static> Clone for Cell<A> {
+    fn clone(&self) -> Self {
+        Cell {
+            impl_: self.impl_.clone()
+        }
+    }
+}

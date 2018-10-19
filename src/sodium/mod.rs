@@ -1,6 +1,7 @@
 pub use self::cell::Cell;
 pub use self::cell_loop::CellLoop;
 pub use self::cell_sink::CellSink;
+pub use self::is_cell::IsCell;
 pub use self::operational::Operational;
 pub use self::sodium_ctx::SodiumCtx;
 pub use self::stream::Stream;
@@ -20,6 +21,9 @@ pub use self::impl_::gc;
 mod cell;
 mod cell_loop;
 mod cell_sink;
+
+mod is_cell;
+mod is_stream;
 
 #[macro_use]
 mod impl_;
