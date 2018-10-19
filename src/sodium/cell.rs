@@ -8,6 +8,7 @@ use sodium::IsLambda5;
 use sodium::IsLambda6;
 use sodium::Listener;
 use sodium::gc::Finalize;
+use sodium::gc::GcDep;
 use sodium::gc::Trace;
 use sodium::impl_;
 
@@ -79,5 +80,17 @@ impl<A: Clone + Trace + Finalize + 'static> Clone for Cell<A> {
         Cell {
             impl_: self.impl_.clone()
         }
+    }
+}
+
+impl<A: Trace> Trace for Cell<A> {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {
+        self.impl_.trace(f);
+    }
+}
+
+impl<A: Finalize> Finalize for Cell<A> {
+    fn finalize(&mut self) {
+        self.impl_.finalize();
     }
 }

@@ -80,11 +80,10 @@ fn lift_loop() {
     let sodium_ctx = &mut sodium_ctx;
     {
         let out = Rc::new(RefCell::new(Vec::new()));
-        let b = CellSink::new(sodium_ctx, "kettle");
-        let c = Transaction::run(
-            sodium_ctx,
+        let b = sodium_ctx.new_cell_sink("kettle");
+        let c = sodium_ctx.transaction(
             |sodium_ctx| {
-                let mut a = CellLoop::new(sodium_ctx);
+                let mut a = sodium_ctx.new_cell_loop();
                 let c_ = a.lift2(&b, |aa: &&'static str, bb: &&'static str| format!("{} {}", aa, bb));
                 let mut sodium_ctx2 = sodium_ctx.clone();
                 let sodium_ctx2 = &mut sodium_ctx2;
