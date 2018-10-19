@@ -1,5 +1,6 @@
 use sodium::Dep;
 use sodium::IsCell;
+use sodium::IsStream;
 use sodium::IsLambda1;
 use sodium::IsLambda2;
 use sodium::IsLambda3;
@@ -7,6 +8,7 @@ use sodium::IsLambda4;
 use sodium::IsLambda5;
 use sodium::IsLambda6;
 use sodium::Listener;
+use sodium::Stream;
 use sodium::gc::Finalize;
 use sodium::gc::GcDep;
 use sodium::gc::Trace;
@@ -65,6 +67,16 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         Cell {
             impl_: self.impl_.lift6(cb.to_cell().impl_, cc.to_cell().impl_, cd.to_cell().impl_, ce.to_cell().impl_, cf.to_cell().impl_, f)
         }
+    }
+
+    pub fn switch_s<SA:IsStream<A> + Trace + Finalize + Clone + 'static,CSA:IsCell<SA>>(csa: CSA) -> Stream<A> {
+        Stream {
+            impl_: impl_::Cell::switch_s(csa.to_cell().impl_.map(|sa:&SA| sa.to_stream().impl_))
+        }
+    }
+
+    pub fn switch_c<CA:IsCell<A> + Trace + Finalize + Clone + 'static,CCA:IsCell<CA>>(cca: CCA) -> Cell<A> {
+        unimplemented!();
     }
 
     pub fn listen<CALLBACK:FnMut(&A)+'static>(

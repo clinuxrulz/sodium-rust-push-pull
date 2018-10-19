@@ -23,6 +23,11 @@ pub trait IsStream<A: Finalize + Trace + Clone + 'static> {
         self.to_stream().map(f)
     }
 
+    fn map_to<B: Clone + Trace + Finalize + 'static>(&self, b: &B) -> Stream<B> {
+        let b = b.clone();
+        self.map(move |_a: &A| b.clone())
+    }
+
     fn hold(&self, a: A) -> Cell<A> {
         self.to_stream().hold(a)
     }

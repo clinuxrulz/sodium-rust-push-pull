@@ -10,6 +10,7 @@ use sodium::impl_::Listener;
 use sodium::impl_::MemoLazy;
 use sodium::impl_::Node;
 use sodium::impl_::SodiumCtx;
+use sodium::impl_::Stream;
 use sodium::gc::Finalize;
 use sodium::gc::Gc;
 use sodium::gc::GcDep;
@@ -294,6 +295,14 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 || {}
             )
         }
+    }
+
+    pub fn switch_s(csa: Cell<Stream<A>>) -> Stream<A> {
+        unimplemented!();
+    }
+
+    pub fn switch_c(cca: Cell<Cell<A>>) -> Cell<A> {
+        unimplemented!();
     }
 
     pub fn listen<CALLBACK:FnMut(&A)+'static>(

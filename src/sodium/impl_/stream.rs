@@ -14,6 +14,7 @@ use sodium::impl_::Node;
 use sodium::impl_::SodiumCtx;
 use sodium::gc::Finalize;
 use sodium::gc::Gc;
+use sodium::gc::GcDep;
 use sodium::gc::Trace;
 use std::cell::UnsafeCell;
 use std::rc::Rc;
@@ -290,5 +291,17 @@ impl<A:Clone + 'static> Clone for Stream<A> {
             value: self.value.clone(),
             node: self.node.clone()
         }
+    }
+}
+
+impl<A:Trace> Trace for Stream<A> {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {
+        self.node.trace(f);
+    }
+}
+
+impl<A:Finalize> Finalize for Stream<A> {
+    fn finalize(&mut self) {
+        self.node.finalize();
     }
 }
