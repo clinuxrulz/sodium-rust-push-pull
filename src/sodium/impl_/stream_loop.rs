@@ -29,3 +29,12 @@ impl<A: Trace + Finalize + Clone + 'static> StreamLoop<A> {
         }
     }
 }
+
+impl<A: Trace + Finalize + Clone + 'static> Clone for StreamLoop<A> {
+    fn clone(&self) -> Self {
+        StreamLoop {
+            value: self.value.clone(),
+            node: self.node.clone()
+        }
+    }
+}

@@ -60,7 +60,8 @@ impl SodiumCtx {
         self.impl_.gc_ctx()
     }
 
-    pub fn transaction<A,CODE:FnOnce()->A>(&self, code: CODE) -> A {
-        self.impl_.transaction(code)
+    pub fn transaction<A,CODE:FnOnce(&SodiumCtx)->A>(&self, code: CODE) -> A {
+        let sodium_ctx = self.clone();
+        self.impl_.transaction(|| code(sodium_ctx))
     }
 }

@@ -1,5 +1,7 @@
 use sodium::Cell;
 use sodium::Dep;
+use sodium::IsCell;
+use sodium::IsStream;
 use sodium::IsLambda1;
 use sodium::IsLambda2;
 use sodium::IsLambda3;
@@ -50,39 +52,39 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         }
     }
 
-    pub fn snapshot<B>(&self, cb: Cell<B>) -> Stream<B> where B: Trace + Finalize + Clone + 'static {
+    pub fn snapshot<B,CB:IsCell<B>>(&self, cb: CB) -> Stream<B> where B: Trace + Finalize + Clone + 'static {
         Stream {
-            impl_: self.impl_.snapshot(cb.impl_)
+            impl_: self.impl_.snapshot(cb.to_cell().impl_)
         }
     }
 
-    pub fn snapshot2<B,C,FN:IsLambda2<A,B,C> + 'static>(&self, cb: Cell<B>, f: FN) -> Stream<C> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static {
+    pub fn snapshot2<B,C,CB:IsCell<B>,FN:IsLambda2<A,B,C> + 'static>(&self, cb: CB, f: FN) -> Stream<C> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static {
         Stream {
-            impl_: self.impl_.snapshot2(cb.impl_, f)
+            impl_: self.impl_.snapshot2(cb.to_cell().impl_, f)
         }
     }
 
-    pub fn snapshot3<B,C,D,FN:IsLambda3<A,B,C,D> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, f: FN) -> Stream<D> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static {
+    pub fn snapshot3<B,C,D,CB:IsCell<B>,CC:IsCell<C>,FN:IsLambda3<A,B,C,D> + 'static>(&self, cb: CB, cc: CC, f: FN) -> Stream<D> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static {
         Stream {
-            impl_: self.impl_.snapshot3(cb.impl_, cc.impl_, f)
+            impl_: self.impl_.snapshot3(cb.to_cell().impl_, cc.to_cell().impl_, f)
         }
     }
 
-    pub fn snapshot4<B,C,D,E,FN:IsLambda4<A,B,C,D,E> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, cd: Cell<D>, f: FN) -> Stream<E> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static {
+    pub fn snapshot4<B,C,D,E,CB:IsCell<B>,CC:IsCell<C>,CD:IsCell<D>,FN:IsLambda4<A,B,C,D,E> + 'static>(&self, cb: CB, cc: CC, cd: CD, f: FN) -> Stream<E> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static {
         Stream {
-            impl_: self.impl_.snapshot4(cb.impl_, cc.impl_, cd.impl_, f)
+            impl_: self.impl_.snapshot4(cb.to_cell().impl_, cc.to_cell().impl_, cd.to_cell().impl_, f)
         }
     }
 
-    pub fn snapshot5<B,C,D,E,F,FN:IsLambda5<A,B,C,D,E,F> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, cd: Cell<D>, ce: Cell<E>, f: FN) -> Stream<F> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, F: Trace + Finalize + Clone + 'static {
+    pub fn snapshot5<B,C,D,E,F,CB:IsCell<B>,CC:IsCell<C>,CD:IsCell<D>,CE:IsCell<E>,FN:IsLambda5<A,B,C,D,E,F> + 'static>(&self, cb: CB, cc: CC, cd: CD, ce: CE, f: FN) -> Stream<F> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, F: Trace + Finalize + Clone + 'static {
         Stream {
-            impl_: self.impl_.snapshot5(cb.impl_, cc.impl_, cd.impl_, ce.impl_, f)
+            impl_: self.impl_.snapshot5(cb.to_cell().impl_, cc.to_cell().impl_, cd.to_cell().impl_, ce.to_cell().impl_, f)
         }
     }
 
-    pub fn snapshot6<B,C,D,E,F,G,FN:IsLambda6<A,B,C,D,E,F,G> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, cd: Cell<D>, ce: Cell<E>, cf: Cell<F>, f: FN) -> Stream<G> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, F: Trace + Finalize + Clone + 'static, G: Trace + Finalize + Clone + 'static {
+    pub fn snapshot6<B,C,D,E,F,G,CB:IsCell<B>,CC:IsCell<C>,CD:IsCell<D>,CE:IsCell<E>,CF:IsCell<F>,FN:IsLambda6<A,B,C,D,E,F,G> + 'static>(&self, cb: CB, cc: CC, cd: CD, ce: CE, cf: CF, f: FN) -> Stream<G> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, F: Trace + Finalize + Clone + 'static, G: Trace + Finalize + Clone + 'static {
         Stream {
-            impl_: self.impl_.snapshot6(cb.impl_, cc.impl_, cd.impl_, ce.impl_, cf.impl_, f)
+            impl_: self.impl_.snapshot6(cb.to_cell().impl_, cc.to_cell().impl_, cd.to_cell().impl_, ce.to_cell().impl_, cf.to_cell().impl_, f)
         }
     }
 

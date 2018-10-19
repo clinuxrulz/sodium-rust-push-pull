@@ -216,6 +216,10 @@ impl<A: Trace> Trace for Vec<A> {
     }
 }
 
+impl Trace for () {
+    fn trace(&self, _f: &mut FnMut(&GcDep)) {}
+}
+
 impl Trace for i32 {
     fn trace(&self, f: &mut FnMut(&GcDep)) {}
 }
@@ -264,6 +268,8 @@ impl<A: Finalize> Finalize for Vec<A> {
         }
     }
 }
+
+impl Finalize for () {}
 
 impl Finalize for i32 {}
 

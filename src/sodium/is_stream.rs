@@ -1,21 +1,76 @@
+use sodium::Cell;
+use sodium::IsCell;
+use sodium::IsLambda1;
+use sodium::IsLambda2;
+use sodium::IsLambda3;
+use sodium::IsLambda4;
+use sodium::IsLambda5;
+use sodium::IsLambda6;
+use sodium::Listener;
 use sodium::Stream;
 use sodium::StreamLoop;
 use sodium::StreamSink;
 use sodium::gc::Finalize;
 use sodium::gc::Trace;
 
-pub trait IsStream<A> {
-    fn to_stream(self) -> Stream<A>;
+pub trait IsStream<A: Finalize + Trace + Clone + 'static> {
+    fn to_stream(&self) -> Stream<A>;
+
+    fn map<B: Clone + Trace + Finalize + 'static,F:IsLambda1<A,B> + 'static>(
+        &self,
+        f: F
+    ) -> Stream<B> {
+        self.to_stream().map(f)
+    }
+
+    fn hold(&self, a: A) -> Cell<A> {
+        self.to_stream().hold(a)
+    }
+
+    fn filter<PRED:IsLambda1<A,bool> + 'static>(&self, pred: PRED) -> Stream<A> {
+        self.to_stream().filter(pred)
+    }
+
+    fn snapshot<B,CB:IsCell<B>>(&self, cb: CB) -> Stream<B> where B: Trace + Finalize + Clone + 'static {
+        self.to_stream().snapshot(cb)
+    }
+
+    fn snapshot2<B,C,CB:IsCell<B>,FN:IsLambda2<A,B,C> + 'static>(&self, cb: CB, f: FN) -> Stream<C> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static {
+        self.to_stream().snapshot2(cb, f)
+    }
+
+    fn snapshot3<B,C,D,CB:IsCell<B>,CC:IsCell<C>,FN:IsLambda3<A,B,C,D> + 'static>(&self, cb: CB, cc: CC, f: FN) -> Stream<D> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static {
+        self.to_stream().snapshot3(cb, cc, f)
+    }
+
+    fn snapshot4<B,C,D,E,CB:IsCell<B>,CC:IsCell<C>,CD:IsCell<D>,FN:IsLambda4<A,B,C,D,E> + 'static>(&self, cb: CB, cc: CC, cd: CD, f: FN) -> Stream<E> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static {
+        self.to_stream().snapshot4(cb, cc, cd, f)
+    }
+
+    fn snapshot5<B,C,D,E,F,CB:IsCell<B>,CC:IsCell<C>,CD:IsCell<D>,CE:IsCell<E>,FN:IsLambda5<A,B,C,D,E,F> + 'static>(&self, cb: CB, cc: CC, cd: CD, ce: CE, f: FN) -> Stream<F> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, F: Trace + Finalize + Clone + 'static {
+        self.to_stream().snapshot5(cb, cc, cd, ce, f)
+    }
+
+    fn snapshot6<B,C,D,E,F,G,CB:IsCell<B>,CC:IsCell<C>,CD:IsCell<D>,CE:IsCell<E>,CF:IsCell<F>,FN:IsLambda6<A,B,C,D,E,F,G> + 'static>(&self, cb: CB, cc: CC, cd: CD, ce: CE, cf: CF, f: FN) -> Stream<G> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, F: Trace + Finalize + Clone + 'static, G: Trace + Finalize + Clone + 'static {
+        self.to_stream().snapshot6(cb, cc, cd, ce, cf, f)
+    }
+
+    fn listen<CALLBACK:FnMut(&A)+'static>(
+        &self,
+        callback: CALLBACK
+    ) -> Listener {
+        self.to_stream().listen(callback)
+    }
 }
 
-impl<A> IsStream<A> for Stream<A> {
-    fn to_stream(self) -> Stream<A> {
-        self
+impl<A: Finalize + Trace + Clone + 'static> IsStream<A> for Stream<A> {
+    fn to_stream(&self) -> Stream<A> {
+        self.clone()
     }
 }
 
 impl<A: Finalize + Trace + Clone + 'static> IsStream<A> for StreamLoop<A> {
-    fn to_stream(self) -> Stream<A> {
+    fn to_stream(&self) -> Stream<A> {
         Stream {
             impl_: self.impl_.to_stream()
         }
@@ -23,15 +78,15 @@ impl<A: Finalize + Trace + Clone + 'static> IsStream<A> for StreamLoop<A> {
 }
 
 impl<A: Finalize + Trace + Clone + 'static> IsStream<A> for StreamSink<A> {
-    fn to_stream(self) -> Stream<A> {
+    fn to_stream(&self) -> Stream<A> {
         Stream {
             impl_: self.impl_.to_stream()
         }
     }
 }
 
-impl<'r, A, SA: Clone + IsStream<A>> IsStream<A> for &'r SA {
-    fn to_stream(self) -> Stream<A> {
-        self.clone().to_stream()
+impl<'r, A: Finalize + Trace + Clone + 'static, SA: Clone + IsStream<A>> IsStream<A> for &'r SA {
+    fn to_stream(&self) -> Stream<A> {
+        (*self).to_stream()
     }
 }

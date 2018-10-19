@@ -61,3 +61,13 @@ impl<A: Trace + Finalize + Clone + 'static> CellSink<A> {
         }
     }
 }
+
+impl<A: Trace + Finalize + Clone + 'static> Clone for CellSink<A> {
+    fn clone(&self) -> Self {
+        CellSink {
+            value: self.value.clone(),
+            next_value_op: self.next_value_op.clone(),
+            node: self.node.clone()
+        }
+    }
+}

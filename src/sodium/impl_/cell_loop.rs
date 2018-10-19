@@ -29,3 +29,12 @@ impl<A: Trace + Finalize + Clone + 'static> CellLoop<A> {
         }
     }
 }
+
+impl<A: Trace + Finalize + Clone + 'static> Clone for CellLoop<A> {
+    fn clone(&self) -> Self {
+        CellLoop {
+            value: self.value.clone(),
+            node: self.node.clone()
+        }
+    }
+}

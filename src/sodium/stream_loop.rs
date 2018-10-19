@@ -1,3 +1,4 @@
+use sodium::IsStream;
 use sodium::Stream;
 use sodium::gc::Finalize;
 use sodium::gc::Trace;
@@ -9,8 +10,8 @@ pub struct StreamLoop<A> {
 
 impl<A: Trace + Finalize + Clone + 'static> StreamLoop<A> {
 
-    pub fn loop_(&self, sa: Stream<A>) {
-        self.impl_.loop_(sa.impl_);
+    pub fn loop_<SA:IsStream<A>>(&self, sa: SA) {
+        self.impl_.loop_(sa.to_stream().impl_);
     }
 
     pub fn to_stream(&self) -> Stream<A> {
