@@ -36,6 +36,14 @@ pub trait IsStream<A: Finalize + Trace + Clone + 'static> {
         self.to_stream().filter(pred)
     }
 
+    fn merge<SA: IsStream<A>, FN: Fn(&A,&A)->A>(&self, sa: SA, f: FN) -> Stream<A> {
+        self.to_stream().merge(sa, f)
+    }
+
+    fn or_else<SA: IsStream<A>>(&self, sa: SA) -> Stream<A> {
+        self.merge(sa, |_l, r| r.clone())
+    }
+
     fn snapshot<B,CB:IsCell<B>>(&self, cb: CB) -> Stream<B> where B: Trace + Finalize + Clone + 'static {
         self.to_stream().snapshot(cb)
     }
@@ -93,5 +101,19 @@ impl<A: Finalize + Trace + Clone + 'static> IsStream<A> for StreamSink<A> {
 impl<'r, A: Finalize + Trace + Clone + 'static, SA: Clone + IsStream<A>> IsStream<A> for &'r SA {
     fn to_stream(&self) -> Stream<A> {
         (*self).to_stream()
+    }
+}
+
+pub trait IsStreamOption<A: Finalize + Trace + Clone + 'static> {
+    fn to_stream_option(&self) -> Stream<Option<A>>;
+
+    fn filter_option(&self) -> Stream<A> {
+        self.to_stream_option().filter_option()
+    }
+}
+
+impl<A: Finalize + Trace + Clone + 'static, SOA: IsStream<Option<A>> + Clone> IsStreamOption<A> for SOA {
+    fn to_stream_option(&self) -> Stream<Option<A>> {
+        self.clone().to_stream()
     }
 }

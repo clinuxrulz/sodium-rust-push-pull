@@ -224,6 +224,10 @@ impl Trace for i32 {
     fn trace(&self, f: &mut FnMut(&GcDep)) {}
 }
 
+impl Trace for u32 {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {}
+}
+
 impl Trace for &'static str {
     fn trace(&self, f: &mut FnMut(&GcDep)) {}
 }
@@ -272,6 +276,8 @@ impl<A: Finalize> Finalize for Vec<A> {
 impl Finalize for () {}
 
 impl Finalize for i32 {}
+
+impl Finalize for u32 {}
 
 impl Finalize for &'static str {}
 

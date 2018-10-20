@@ -204,6 +204,10 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         }
     }
 
+    pub fn merge<FN:Fn(&A,&A)->A>(&self, sa: Stream<A>, f: FN) -> Stream<A> {
+        unimplemented!();
+    }
+
     pub fn snapshot<B>(&self, cb: Cell<B>) -> Stream<B> where B: Trace + Finalize + Clone + 'static {
         let deps = vec![cb.to_dep()];
         self.map(Lambda::new(Box::new(move |_a: &A| cb.sample_no_trans()), deps))

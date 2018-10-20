@@ -54,7 +54,7 @@ fn map_to() {
         {
             let out = out.clone();
             l =
-                s.map_to("fusebox")
+                s.map_to(&"fusebox")
                     .listen(
                         move |a|
                             (*out).borrow_mut().push(*a)
@@ -113,35 +113,35 @@ fn merge_simultaneous() {
                             (*out).borrow_mut().push(*a)
                     );
         }
-        sodium_ctx.run_transaction(
-            || {
+        sodium_ctx.transaction(
+            |_| {
                 s1.send(&7);
                 s2.send(&60);
             }
         );
-        sodium_ctx.run_transaction(
-            || {
+        sodium_ctx.transaction(
+            |_| {
                 s1.send(&9);
             }
         );
-        sodium_ctx.run_transaction(
-            || {
+        sodium_ctx.transaction(
+            |_| {
                 s1.send(&7);
                 s1.send(&60);
                 s2.send(&8);
                 s2.send(&90);
             }
         );
-        sodium_ctx.run_transaction(
-            || {
+        sodium_ctx.transaction(
+            |_| {
                 s2.send(&8);
                 s2.send(&90);
                 s1.send(&7);
                 s1.send(&60);
             }
         );
-        sodium_ctx.run_transaction(
-            || {
+        sodium_ctx.transaction(
+            |_| {
                 s2.send(&8);
                 s1.send(&7);
                 s2.send(&90);
@@ -169,13 +169,13 @@ fn coalesce() {
                     out.borrow_mut().push(*a)
             );
         }
-        sodium_ctx.run_transaction(
-            || {
+        sodium_ctx.transaction(
+            |_| {
                 s.send(&2);
             }
         );
-        sodium_ctx.run_transaction(
-            || {
+        sodium_ctx.transaction(
+            |_| {
                 s.send(&8);
                 s.send(&40);
             }
@@ -683,12 +683,11 @@ fn loop_cell() {
     let sodium_ctx = &mut sodium_ctx;
     {
         let sa = sodium_ctx.new_stream_sink();
-        let sum_out = Transaction::run(
-            sodium_ctx,
-            |sodium_ctx: &mut SodiumCtx| {
+        let sum_out = sodium_ctx.transaction(
+            |sodium_ctx: &SodiumCtx| {
                 let mut sum = sodium_ctx.new_cell_loop();
                 let sum_out = sa
-                    .snapshot(&sum, |x: &i32, y: &i32| *x + *y)
+                    .snapshot2(&sum, |x: &i32, y: &i32| *x + *y)
                     .hold(0);
                 sum.loop_(&sum_out);
                 sum_out
