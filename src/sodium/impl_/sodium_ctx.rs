@@ -56,13 +56,17 @@ impl SodiumCtx {
     }
 
     pub fn pre<F: FnMut() + 'static>(&self, f: F) {
-        let self_ = unsafe { &mut *(*self.data).get() };
-        self_.pre_trans.push(Box::new(f));
+        self.transaction(|| {
+            let self_ = unsafe { &mut *(*self.data).get() };
+            self_.pre_trans.push(Box::new(f));
+        })
     }
 
     pub fn post<F: FnMut() + 'static>(&self, f: F) {
-        let self_ = unsafe { &mut *(*self.data).get() };
-        self_.post_trans.push(Box::new(f));
+        self.transaction(|| {
+            let self_ = unsafe { &mut *(*self.data).get() };
+            self_.post_trans.push(Box::new(f));
+        });
     }
 
     pub fn transaction<A,CODE:FnOnce()->A>(&self, code: CODE)->A {
