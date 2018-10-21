@@ -5,6 +5,7 @@ use sodium::impl_::Node;
 use sodium::impl_::SodiumCtx;
 use sodium::gc::Finalize;
 use sodium::gc::Gc;
+use sodium::gc::GcDep;
 use sodium::gc::Trace;
 use std::cell::UnsafeCell;
 use std::mem::swap;
@@ -82,5 +83,17 @@ impl<A: Clone + Trace + Finalize + 'static> Clone for StreamSink<A> {
             node: self.node.clone(),
             will_clear: self.will_clear.clone()
         }
+    }
+}
+
+impl<A: Clone + Trace + Finalize + 'static> Finalize for StreamSink<A> {
+    fn finalize(&mut self) {
+        self.node.finalize();
+    }
+}
+
+impl<A: Clone + Trace + Finalize + 'static> Trace for StreamSink<A> {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {
+        self.node.trace(f);
     }
 }

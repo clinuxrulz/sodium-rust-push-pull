@@ -3,11 +3,15 @@ use sodium::CellLoop;
 use sodium::CellSink;
 use sodium::IsCell;
 use sodium::IsStream;
+use sodium::IsStreamOption;
 use sodium::Operational;
 use sodium::SodiumCtx;
 use sodium::Stream;
 use sodium::StreamLoop;
 use sodium::StreamSink;
+use sodium::gc::Finalize;
+use sodium::gc::GcDep;
+use sodium::gc::Trace;
 use tests::assert_memory_freed;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -276,8 +280,8 @@ fn loop_() {
         let sa = sodium_ctx.new_stream_sink();
         let mut sodium_ctx2 = sodium_ctx.clone();
         let sodium_ctx2 = &mut sodium_ctx2;
-        let sc = sodium_ctx.run_transaction(
-            || {
+        let sc = sodium_ctx.transaction(
+            |sodium_ctx| {
                 let mut sb = sodium_ctx2.new_stream_loop();
                 let sc_ =
                     sa
@@ -346,7 +350,7 @@ fn collect() {
     {
         let ea = sodium_ctx.new_stream_sink();
         let out = Rc::new(RefCell::new(Vec::new()));
-        let sum = ea.collect(0, |a,s| (*a + *s + 100, *a + *s));
+        let sum = ea.collect(0, |a:&u32,s:&u32| (*a + *s + 100, *a + *s));
         let l;
         {
             let out = out.clone();
@@ -374,7 +378,7 @@ fn accum() {
     {
         let ea = sodium_ctx.new_stream_sink();
         let out = Rc::new(RefCell::new(Vec::new()));
-        let sum = ea.accum(100, |a, s| *a + *s);
+        let sum = ea.accum(100, |a:&u32, s:&u32| *a + *s);
         let l;
         {
             let out = out.clone();
@@ -436,7 +440,7 @@ fn defer() {
             l =
                 Operational
                     ::defer(&s)
-                    .snapshot_to(&c)
+                    .snapshot(&c)
                     .listen(
                         move |a|
                             out.borrow_mut().push(*a)
@@ -484,7 +488,7 @@ fn hold_is_delayed() {
     {
         let s = sodium_ctx.new_stream_sink();
         let h = s.hold(0);
-        let s_pair = s.snapshot(&h, |a: &i32, b: &i32| format!("{} {}", *a, *b));
+        let s_pair = s.snapshot2(&h, |a: &i32, b: &i32| format!("{} {}", *a, *b));
         let out = Rc::new(RefCell::new(Vec::new()));
         let l;
         {
@@ -523,6 +527,12 @@ fn switch_c() {
                     sw: sw
                 }
             }
+        }
+        impl Finalize for SC {
+            fn finalize(&mut self) {}
+        }
+        impl Trace for SC {
+            fn trace(&self, f: &mut FnMut(&GcDep)) {}
         }
         let ssc = sodium_ctx.new_stream_sink();
         let mut sodium_ctx2 = sodium_ctx.clone();
@@ -578,7 +588,13 @@ fn switch_s() {
                 }
             }
         }
-        let sss = StreamSink::new(sodium_ctx);
+        impl Finalize for SS {
+            fn finalize(&mut self) {}
+        }
+        impl Trace for SS {
+            fn trace(&self, f: &mut FnMut(&GcDep)) {}
+        }
+        let sss = sodium_ctx.new_stream_sink();
         let sa = sss.map(|s: &SS| s.a.clone());
         let sb = sss.map(|s: &SS| s.b.clone());
         let mut sodium_ctx2 = sodium_ctx.clone();
@@ -629,10 +645,18 @@ fn switch_s_simultaneous() {
             s: StreamSink<i32>
         }
         impl SS2 {
-            fn new(sodium_ctx: &mut SodiumCtx) -> SS2 {
+            fn new(sodium_ctx: &SodiumCtx) -> SS2 {
                 SS2 {
-                    s: StreamSink::new(sodium_ctx)
+                    s: sodium_ctx.new_stream_sink()
                 }
+            }
+        }
+        impl Finalize for SS2 {
+            fn finalize(&mut self) {}
+        }
+        impl Trace for SS2 {
+            fn trace(&self, f: &mut FnMut(&GcDep)) {
+                self.s.trace(f)
             }
         }
         let ss1 = SS2::new(sodium_ctx);
@@ -640,8 +664,8 @@ fn switch_s_simultaneous() {
         let ss3 = SS2::new(sodium_ctx);
         let ss4 = SS2::new(sodium_ctx);
         let css = sodium_ctx.new_cell_sink(ss1.clone());
-        let mut sodium_ctx2 = sodium_ctx.clone();
-        let sodium_ctx2 = &mut sodium_ctx2;
+        let sodium_ctx2 = sodium_ctx.clone();
+        let sodium_ctx2 = &sodium_ctx2;
         let so = Cell::switch_s(&css.map(|b: &SS2| b.s.clone()));
         let out = Rc::new(RefCell::new(Vec::new()));
         let l;
@@ -663,8 +687,8 @@ fn switch_s_simultaneous() {
         ss3.s.send(&5);
         ss3.s.send(&6);
         ss3.s.send(&7);
-        sodium_ctx.run_transaction(
-            || {
+        sodium_ctx.transaction(
+            |sodium_ctx| {
                 ss3.s.send(&8);
                 css.send(&ss4);
                 ss4.s.send(&2);

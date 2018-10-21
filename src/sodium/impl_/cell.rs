@@ -47,6 +47,12 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         thunk.get().get().clone()
     }
 
+    pub fn sample(&self) -> A {
+        let sodium_ctx = self.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        sodium_ctx.transaction(|| self.sample_no_trans())
+    }
+
     pub fn map<B: Clone + Trace + Finalize + 'static,F:IsLambda1<A,B> + 'static>(
         &self,
         f: F

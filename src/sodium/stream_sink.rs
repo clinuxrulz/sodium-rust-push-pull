@@ -1,5 +1,6 @@
 use sodium::Stream;
 use sodium::gc::Finalize;
+use sodium::gc::GcDep;
 use sodium::gc::Trace;
 use sodium::impl_;
 
@@ -24,5 +25,17 @@ impl<A: Clone + Trace + Finalize + 'static> Clone for StreamSink<A> {
         StreamSink {
             impl_: self.impl_.clone()
         }
+    }
+}
+
+impl<A: Clone + Trace + Finalize + 'static> Finalize for StreamSink<A> {
+    fn finalize(&mut self) {
+        self.finalize()
+    }
+}
+
+impl<A: Clone + Trace + Finalize + 'static> Trace for StreamSink<A> {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {
+        self.impl_.trace(f)
     }
 }

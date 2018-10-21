@@ -9,7 +9,9 @@ use sodium::IsLambda4;
 use sodium::IsLambda5;
 use sodium::IsLambda6;
 use sodium::Listener;
+use sodium::MemoLazy;
 use sodium::gc::Finalize;
+use sodium::gc::GcDep;
 use sodium::gc::Trace;
 use sodium::impl_;
 
@@ -55,6 +57,37 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     pub fn merge<SA:IsStream<A>, FN:Fn(&A,&A)->A>(&self, sa: SA, f: FN) -> Stream<A> {
         Stream {
             impl_: self.impl_.merge(sa.to_stream().impl_, f)
+        }
+    }
+
+    pub fn gate<CA:IsCell<bool>>(&self, ca: CA) -> Stream<A> {
+        Stream {
+            impl_: self.impl_.gate(ca.to_cell().impl_)
+        }
+    }
+
+    pub fn collect_lazy<B,S,F>(&self, init_state: MemoLazy<S>, f: F) -> Stream<B>
+        where B: Clone + 'static,
+              S: Clone + 'static,
+              F: IsLambda2<A,S,(B,S)> + 'static
+    {
+        Stream {
+            impl_: self.impl_.collect_lazy(init_state, f)
+        }
+    }
+
+    pub fn accum_lazy<S,F>(&self, init_state: MemoLazy<S>, f: F) -> Cell<S>
+        where S: Clone + 'static,
+              F: IsLambda2<A,S,S> + 'static
+    {
+        Cell {
+            impl_: self.impl_.accum_lazy(init_state, f)
+        }
+    }
+
+    pub fn once(&self) -> Stream<A> {
+        Stream {
+            impl_: self.impl_.once()
         }
     }
 
@@ -107,5 +140,15 @@ impl<A: Clone + Trace + Finalize + 'static> Clone for Stream<A> {
         Stream {
             impl_: self.impl_.clone()
         }
+    }
+}
+
+impl<A: Clone + Trace + Finalize + 'static> Finalize for Stream<A> {
+    fn finalize(&mut self) {}
+}
+
+impl<A: Clone + Trace + Finalize + 'static> Trace for Stream<A> {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {
+        self.impl_.trace(f);
     }
 }

@@ -24,6 +24,10 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         self.impl_.to_dep()
     }
 
+    pub fn sample(&self) -> A {
+        self.impl_.sample()
+    }
+
     pub fn map<B: Clone + Trace + Finalize + 'static,F:IsLambda1<A,B> + 'static>(
         &self,
         f: F

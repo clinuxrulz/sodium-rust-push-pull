@@ -14,6 +14,10 @@ use sodium::gc::Trace;
 pub trait IsCell<A: Finalize + Trace + Clone + 'static>: Sized {
     fn to_cell(&self) -> Cell<A>;
 
+    fn sample(&self) -> A {
+        self.to_cell().sample()
+    }
+
     fn map<B: Clone + Trace + Finalize + 'static,F:IsLambda1<A,B> + 'static>(
         &self,
         f: F

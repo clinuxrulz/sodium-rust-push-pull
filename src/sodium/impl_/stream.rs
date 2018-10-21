@@ -208,6 +208,29 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         unimplemented!();
     }
 
+    pub fn gate(&self, ca: Cell<bool>) -> Stream<A> {
+        unimplemented!();
+    }
+
+    pub fn collect_lazy<B,S,F>(&self, init_state: MemoLazy<S>, f: F) -> Stream<B>
+        where B: Clone + 'static,
+              S: Clone + 'static,
+              F: IsLambda2<A,S,(B,S)> + 'static
+    {
+        unimplemented!();
+    }
+
+    pub fn accum_lazy<S,F>(&self, init_state: MemoLazy<S>, f: F) -> Cell<S>
+        where S: Clone + 'static,
+              F: IsLambda2<A,S,S> + 'static
+    {
+        unimplemented!();
+    }
+
+    pub fn once(&self) -> Stream<A> {
+        unimplemented!();
+    }
+
     pub fn snapshot<B>(&self, cb: Cell<B>) -> Stream<B> where B: Trace + Finalize + Clone + 'static {
         let deps = vec![cb.to_dep()];
         self.map(Lambda::new(Box::new(move |_a: &A| cb.sample_no_trans()), deps))

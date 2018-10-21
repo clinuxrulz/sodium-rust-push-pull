@@ -7,6 +7,7 @@ use sodium::IsLambda4;
 use sodium::IsLambda5;
 use sodium::IsLambda6;
 use sodium::Listener;
+use sodium::MemoLazy;
 use sodium::Stream;
 use sodium::StreamLoop;
 use sodium::StreamSink;
@@ -38,6 +39,44 @@ pub trait IsStream<A: Finalize + Trace + Clone + 'static> {
 
     fn merge<SA: IsStream<A>, FN: Fn(&A,&A)->A>(&self, sa: SA, f: FN) -> Stream<A> {
         self.to_stream().merge(sa, f)
+    }
+
+    fn gate<CA: IsCell<bool>>(&self, ca: CA) -> Stream<A> {
+        self.to_stream().gate(ca)
+    }
+
+    fn collect<B,S,F>(&self, init_state: S, f: F) -> Stream<B>
+        where B: Clone + 'static,
+              S: Clone + 'static,
+              F: IsLambda2<A,S,(B,S)> + 'static
+    {
+        self.collect_lazy(MemoLazy::new(move || init_state.clone()), f)
+    }
+
+    fn collect_lazy<B,S,F>(&self, init_state: MemoLazy<S>, f: F) -> Stream<B>
+        where B: Clone + 'static,
+              S: Clone + 'static,
+              F: IsLambda2<A,S,(B,S)> + 'static
+    {
+        self.to_stream().collect_lazy(init_state, f)
+    }
+
+    fn accum<S,F>(&self, init_state: S, f: F) -> Cell<S>
+        where S: Clone + 'static,
+              F: IsLambda2<A,S,S> + 'static
+    {
+        self.accum_lazy(MemoLazy::new(move || init_state.clone()), f)
+    }
+
+    fn accum_lazy<S,F>(&self, init_state: MemoLazy<S>, f: F) -> Cell<S>
+        where S: Clone + 'static,
+              F: IsLambda2<A,S,S> + 'static
+    {
+        self.to_stream().accum_lazy(init_state, f)
+    }
+
+    fn once(&self) -> Stream<A> {
+        self.to_stream().once()
     }
 
     fn or_else<SA: IsStream<A>>(&self, sa: SA) -> Stream<A> {
