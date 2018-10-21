@@ -59,7 +59,7 @@ impl SodiumCtx {
         self.transaction(|| {
             let self_ = unsafe { &mut *(*self.data).get() };
             self_.pre_trans.push(Box::new(f));
-        })
+        });
     }
 
     pub fn post<F: FnMut() + 'static>(&self, f: F) {
