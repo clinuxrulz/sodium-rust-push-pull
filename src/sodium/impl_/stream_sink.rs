@@ -33,7 +33,7 @@ impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
                     let mut next_value_op2 = None;
                     swap(next_value_op, &mut next_value_op2);
                     let value = unsafe { &mut *(*value).get() };
-                    if let Some(next_value) = next_value_op {
+                    if let Some(next_value) = next_value_op2 {
                         *value = next_value.clone();
                     }
                     return true;
