@@ -125,41 +125,17 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     pub fn hold(&self, a: A) -> Cell<A> {
         let sodium_ctx = self.node.sodium_ctx();
         let sodium_ctx = &sodium_ctx;
-        let mut gc_ctx = sodium_ctx.gc_ctx();
-        let val: Rc<UnsafeCell<MemoLazy<A>>>;
-        val = Rc::new(UnsafeCell::new(
-            match self.peek_value() {
-                Some(val) => val,
-                None => MemoLazy::new(move || a.clone())
-            }
-        ));
-        let latch;
-        {
-            let self_ = self.clone();
-            latch = gc_ctx.new_gc(UnsafeCell::new(Latch::new(move || {
-                let val: &mut MemoLazy<A> = unsafe { &mut *(*val).get() };
-                match self_.peek_value() {
-                    Some(val2) => *val = val2,
-                    None => ()
-                }
-                val.clone()
-            })));
-        }
         let self_ = self.clone();
-        Cell {
-            value: latch.clone(),
-            node: Node::new(
-                sodium_ctx,
-                move || {
-                    let latch = unsafe { &mut *(*latch).get() };
-                    latch.reset();
-                    return self_.peek_value().is_some();
-                },
-                Vec::new(),
-                vec![self.node.clone()],
-                || {}
-            )
-        }
+        let deps = vec![self_.node.clone()];
+        Cell::_new(
+            sodium_ctx,
+            MemoLazy::new(move || a.clone()),
+            move || {
+                self_.peek_value()
+            },
+            deps,
+            || {}
+        )
     }
 
     pub fn filter<PRED:IsLambda1<A,bool> + 'static>(&self, pred: PRED) -> Stream<A> {
@@ -233,20 +209,20 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
 
     pub fn snapshot<B>(&self, cb: Cell<B>) -> Stream<B> where B: Trace + Finalize + Clone + 'static {
         let deps = vec![cb.to_dep()];
-        self.map(Lambda::new(Box::new(move |_a: &A| cb.sample_no_trans()), deps))
+        self.map(Lambda::new(move |_a: &A| cb.sample_no_trans(), deps))
     }
 
     pub fn snapshot2<B,C,FN:IsLambda2<A,B,C> + 'static>(&self, cb: Cell<B>, f: FN) -> Stream<C> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static {
         let mut deps = f.deps();
         deps.push(cb.to_dep());
-        self.map(Lambda::new(Box::new(move |a: &A| f.apply(a, &cb.sample_no_trans())), deps))
+        self.map(Lambda::new(move |a: &A| f.apply(a, &cb.sample_no_trans()), deps))
     }
 
     pub fn snapshot3<B,C,D,FN:IsLambda3<A,B,C,D> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, f: FN) -> Stream<D> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static {
         let mut deps = f.deps();
         deps.push(cb.to_dep());
         deps.push(cc.to_dep());
-        self.map(Lambda::new(Box::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans())), deps))
+        self.map(Lambda::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans()), deps))
     }
 
     pub fn snapshot4<B,C,D,E,FN:IsLambda4<A,B,C,D,E> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, cd: Cell<D>, f: FN) -> Stream<E> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static {
@@ -254,7 +230,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         deps.push(cb.to_dep());
         deps.push(cc.to_dep());
         deps.push(cd.to_dep());
-        self.map(Lambda::new(Box::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans(), &cd.sample_no_trans())), deps))
+        self.map(Lambda::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans(), &cd.sample_no_trans()), deps))
     }
 
     pub fn snapshot5<B,C,D,E,F,FN:IsLambda5<A,B,C,D,E,F> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, cd: Cell<D>, ce: Cell<E>, f: FN) -> Stream<F> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, F: Trace + Finalize + Clone + 'static {
@@ -263,7 +239,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         deps.push(cc.to_dep());
         deps.push(cd.to_dep());
         deps.push(ce.to_dep());
-        self.map(Lambda::new(Box::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans(), &cd.sample_no_trans(), &ce.sample_no_trans())), deps))
+        self.map(Lambda::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans(), &cd.sample_no_trans(), &ce.sample_no_trans()), deps))
     }
 
     pub fn snapshot6<B,C,D,E,F,G,FN:IsLambda6<A,B,C,D,E,F,G> + 'static>(&self, cb: Cell<B>, cc: Cell<C>, cd: Cell<D>, ce: Cell<E>, cf: Cell<F>, f: FN) -> Stream<G> where B: Trace + Finalize + Clone + 'static, C: Trace + Finalize + Clone + 'static, D: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, E: Trace + Finalize + Clone + 'static, F: Trace + Finalize + Clone + 'static, G: Trace + Finalize + Clone + 'static {
@@ -273,7 +249,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         deps.push(cd.to_dep());
         deps.push(ce.to_dep());
         deps.push(cf.to_dep());
-        self.map(Lambda::new(Box::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans(), &cd.sample_no_trans(), &ce.sample_no_trans(), &cf.sample_no_trans())), deps))
+        self.map(Lambda::new(move |a: &A| f.apply(a, &cb.sample_no_trans(), &cc.sample_no_trans(), &cd.sample_no_trans(), &ce.sample_no_trans(), &cf.sample_no_trans()), deps))
     }
 
     pub fn listen<CALLBACK:FnMut(&A)+'static>(

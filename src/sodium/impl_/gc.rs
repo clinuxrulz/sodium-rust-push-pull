@@ -220,6 +220,14 @@ impl Trace for () {
     fn trace(&self, _f: &mut FnMut(&GcDep)) {}
 }
 
+impl<A:Trace,B:Trace> Trace for (A,B) {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {
+        let &(ref a, ref b) = self;
+        a.trace(f);
+        b.trace(f);
+    }
+}
+
 impl Trace for bool {
     fn trace(&self, f: &mut FnMut(&GcDep)) {}
 }
@@ -278,6 +286,14 @@ impl<A: Finalize> Finalize for Vec<A> {
 }
 
 impl Finalize for () {}
+
+impl<A:Finalize,B:Finalize> Finalize for (A,B) {
+    fn finalize(&mut self) {
+        let &mut (ref mut a, ref mut b) = self;
+        a.finalize();
+        b.finalize();
+    }
+}
 
 impl Finalize for bool {}
 

@@ -9,8 +9,9 @@ use sodium::impl_::gc::Trace;
 use std::cell::UnsafeCell;
 
 pub struct CellLoop<A> {
-    value: Gc<UnsafeCell<Latch<MemoLazy<A>>>>,
-    node: Node
+    pub value: Gc<UnsafeCell<MemoLazy<A>>>,
+    pub next_value: Gc<UnsafeCell<Option<MemoLazy<A>>>>,
+    pub node: Node
 }
 
 impl<A: Trace + Finalize + Clone + 'static> CellLoop<A> {
@@ -25,6 +26,7 @@ impl<A: Trace + Finalize + Clone + 'static> CellLoop<A> {
     pub fn to_cell(&self) -> Cell<A> {
         Cell {
             value: self.value.clone(),
+            next_value: self.next_value.clone(),
             node: self.node.clone()
         }
     }
@@ -34,6 +36,7 @@ impl<A: Trace + Finalize + Clone + 'static> Clone for CellLoop<A> {
     fn clone(&self) -> Self {
         CellLoop {
             value: self.value.clone(),
+            next_value: self.next_value.clone(),
             node: self.node.clone()
         }
     }
