@@ -37,7 +37,7 @@ pub trait IsStream<A: Finalize + Trace + Clone + 'static> {
         self.to_stream().filter(pred)
     }
 
-    fn merge<SA: IsStream<A>, FN: Fn(&A,&A)->A>(&self, sa: SA, f: FN) -> Stream<A> {
+    fn merge<SA: IsStream<A>, FN: Fn(&A,&A)->A+'static>(&self, sa: SA, f: FN) -> Stream<A> {
         self.to_stream().merge(sa, f)
     }
 

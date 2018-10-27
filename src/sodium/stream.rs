@@ -54,7 +54,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         }
     }
 
-    pub fn merge<SA:IsStream<A>, FN:Fn(&A,&A)->A>(&self, sa: SA, f: FN) -> Stream<A> {
+    pub fn merge<SA:IsStream<A>, FN:Fn(&A,&A)->A+'static>(&self, sa: SA, f: FN) -> Stream<A> {
         Stream {
             impl_: self.impl_.merge(sa.to_stream().impl_, f)
         }
