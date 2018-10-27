@@ -23,3 +23,15 @@ impl Listener {
         *node_op = None;
     }
 }
+
+impl Finalize for Listener {
+    fn finalize(&mut self) {
+        self.node_op.finalize();
+    }
+}
+
+impl Trace for Listener {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {
+        self.node_op.trace(f);
+    }
+}

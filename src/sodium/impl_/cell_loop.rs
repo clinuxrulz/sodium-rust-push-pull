@@ -1,4 +1,3 @@
-use sodium::impl_::Latch;
 use sodium::impl_::MemoLazy;
 use sodium::impl_::Node;
 use sodium::impl_::SodiumCtx;
@@ -10,7 +9,7 @@ use std::cell::UnsafeCell;
 
 pub struct CellLoop<A> {
     pub value: Gc<UnsafeCell<MemoLazy<A>>>,
-    pub next_value: Gc<UnsafeCell<Option<MemoLazy<A>>>>,
+    pub next_value: Gc<UnsafeCell<MemoLazy<A>>>,
     pub node: Node
 }
 

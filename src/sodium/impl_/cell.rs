@@ -21,7 +21,7 @@ use std::rc::Rc;
 
 pub struct Cell<A> {
     pub value: Gc<UnsafeCell<MemoLazy<A>>>,
-    pub next_value: Gc<UnsafeCell<Option<MemoLazy<A>>>>,
+    pub next_value: Gc<UnsafeCell<MemoLazy<A>>>,
     pub node: Node
 }
 
@@ -45,7 +45,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
     ) -> Cell<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
         let value = gc_ctx.new_gc(UnsafeCell::new(init_value));
-        let next_value = gc_ctx.new_gc(UnsafeCell::new(None));
+        let next_value = value.clone();
         let update_deps = update.deps();
         let sodium_ctx2 = sodium_ctx.clone();
         Cell {
@@ -60,19 +60,14 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                     let next_value2 = unsafe { &mut *(*next_value).get() };
                     let val_op_is_some = val_op.is_some();
                     if let Some(val) = val_op {
-                        *next_value2 = Some(val);
+                        *next_value2 = val;
                         let value = value.clone();
                         let next_value = next_value.clone();
                         sodium_ctx.post(move || {
                             let value = unsafe { &mut *(*value).get() };
                             let next_value = unsafe { &mut *(*next_value).get() };
-                            if let &mut Some(ref val) = next_value {
-                                *value = val.clone();
-                            }
-                            *next_value = None;
+                            *value = next_value.clone();
                         });
-                    } else {
-                        *next_value2 = None;
                     }
                     val_op_is_some
                 },
@@ -92,7 +87,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         thunk.get().clone()
     }
 
-    pub fn _next_value_thunk_op(&self) -> Option<MemoLazy<A>> {
+    pub fn _next_value_thunk(&self) -> MemoLazy<A> {
         let thunk_op = unsafe { &*(self.next_value).get() };
         thunk_op.clone()
     }
@@ -125,9 +120,9 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
             sodium_ctx,
             init_value,
             Lambda::new(move || {
-                let self_ = self_.clone();
                 let f = f.clone();
-                Some(MemoLazy::new(move || f.apply(&self_.sample_no_trans())))
+                let a_thunk = self_._next_value_thunk();
+                Some(MemoLazy::new(move || f.apply(a_thunk.get())))
             }, update_deps),
             node_deps,
             || {}
@@ -141,7 +136,6 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
     pub fn lift2<B,C,F: IsLambda2<A,B,C> + 'static>(&self, cb: Cell<B>, f: F) -> Cell<C> where B: Clone + Trace + Finalize + 'static, C: Clone + Trace + Finalize + 'static {
         let sodium_ctx = self.node.sodium_ctx();
         let sodium_ctx = &sodium_ctx;
-        let mut gc_ctx = sodium_ctx.gc_ctx();
         let update_deps = f.deps();
         let f = Rc::new(f);
         let ca = self.clone();
@@ -157,15 +151,12 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         }
         let update = Lambda::new(
             move || {
-                if let Some(a_thunk) = ca._next_value_thunk_op() {
-                    if let Some(b_thunk) = cb._next_value_thunk_op() {
+                let a_thunk = ca._next_value_thunk();
+                let b_thunk = cb._next_value_thunk();
                         let f = f.clone();
-                        return Some(MemoLazy::new(move || {
+                Some(MemoLazy::new(move || {
                             f.apply(a_thunk.get(), b_thunk.get())
-                        }));
-                    }
-                }
-                None
+                }))
             },
             update_deps
         );
@@ -289,8 +280,9 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
             sodium_ctx,
             move || {
                 let callback = unsafe { &mut *(*callback).get() };
-                let val = self_._next_value_thunk_op().map(|thunk| thunk.get().clone()).unwrap_or_else(|| self_.sample_no_trans());
-                (*callback)(&val);
+                let thunk = self_._next_value_thunk();
+                let val = thunk.get();
+                (*callback)(val);
                 return true;
             },
             Vec::new(),

@@ -30,7 +30,7 @@ impl<A: Clone + Trace + Finalize + 'static> Clone for StreamSink<A> {
 
 impl<A: Clone + Trace + Finalize + 'static> Finalize for StreamSink<A> {
     fn finalize(&mut self) {
-        self.finalize()
+        self.impl_.finalize()
     }
 }
 

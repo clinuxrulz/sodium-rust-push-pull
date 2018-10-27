@@ -48,7 +48,6 @@ impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
 
     pub fn send(&self, value: A) {
         let sodium_ctx = self.node.sodium_ctx();
-        let sodium_ctx2 = sodium_ctx.clone();
         sodium_ctx.transaction(|| {
             let will_clear = unsafe { &mut *(*self.will_clear).get() };
             if !*will_clear {

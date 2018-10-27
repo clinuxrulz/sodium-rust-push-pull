@@ -16,6 +16,7 @@ use sodium::gc::Finalize;
 use sodium::gc::Gc;
 use sodium::gc::GcDep;
 use sodium::gc::Trace;
+use std::cell::RefCell;
 use std::cell::UnsafeCell;
 use std::rc::Rc;
 
@@ -127,11 +128,15 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         let sodium_ctx = &sodium_ctx;
         let self_ = self.clone();
         let deps = vec![self_.node.clone()];
+        let last = RefCell::new(a.clone());
         Cell::_new(
             sodium_ctx,
             MemoLazy::new(move || a.clone()),
             move || {
-                self_.peek_value()
+                let mut last = last.borrow_mut();
+                let x = last.clone();
+                *last = self_.peek_value().unwrap().get().clone();
+                Some(MemoLazy::new(move || x.clone()))
             },
             deps,
             || {}

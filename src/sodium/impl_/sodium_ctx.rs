@@ -82,11 +82,14 @@ impl SodiumCtx {
 
     fn propergate(&self) {
         let self_ = unsafe { &mut *(*self.data).get() };
-        {
+        loop {
             let mut pre_trans = Vec::new();
             swap(&mut self_.pre_trans, &mut pre_trans);
             for mut f in pre_trans {
                 f();
+            }
+            if self_.pre_trans.is_empty() {
+                break;
             }
         }
         loop {
@@ -101,11 +104,14 @@ impl SodiumCtx {
                 None => break
             }
         }
-        {
+        loop {
             let mut post_trans = Vec::new();
             swap(&mut self_.post_trans, &mut post_trans);
             for mut f in post_trans {
                 f();
+            }
+            if self_.post_trans.is_empty() {
+                break;
             }
         }
     }

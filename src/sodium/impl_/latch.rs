@@ -1,7 +1,6 @@
 use sodium::gc::Finalize;
 use sodium::gc::GcDep;
 use sodium::gc::Trace;
-use sodium::impl_::MemoLazy;
 use std::rc::Rc;
 
 pub struct Latch<A> {

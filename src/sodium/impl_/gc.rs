@@ -229,23 +229,23 @@ impl<A:Trace,B:Trace> Trace for (A,B) {
 }
 
 impl Trace for bool {
-    fn trace(&self, f: &mut FnMut(&GcDep)) {}
+    fn trace(&self, _f: &mut FnMut(&GcDep)) {}
 }
 
 impl Trace for i32 {
-    fn trace(&self, f: &mut FnMut(&GcDep)) {}
+    fn trace(&self, _f: &mut FnMut(&GcDep)) {}
 }
 
 impl Trace for u32 {
-    fn trace(&self, f: &mut FnMut(&GcDep)) {}
+    fn trace(&self, _f: &mut FnMut(&GcDep)) {}
 }
 
 impl Trace for &'static str {
-    fn trace(&self, f: &mut FnMut(&GcDep)) {}
+    fn trace(&self, _f: &mut FnMut(&GcDep)) {}
 }
 
 impl Trace for String {
-    fn trace(&self, f: &mut FnMut(&GcDep)) {}
+    fn trace(&self, _f: &mut FnMut(&GcDep)) {}
 }
 
 impl<A:Trace> Trace for UnsafeCell<A> {
@@ -386,7 +386,7 @@ impl<A> GcCell<A> {
     }
 
     pub fn into_inner(self) -> A {
-        unsafe { self.cell.into_inner() }
+        self.cell.into_inner()
     }
 }
 
