@@ -190,7 +190,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     }
 
     pub fn gate(&self, ca: Cell<bool>) -> Stream<A> {
-        unimplemented!();
+        self.filter(move |_: &A| ca.sample_no_trans())
     }
 
     pub fn collect_lazy<B,S,F>(&self, init_state: MemoLazy<S>, f: F) -> Stream<B>
