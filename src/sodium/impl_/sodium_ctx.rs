@@ -75,7 +75,9 @@ impl SodiumCtx {
         let result = code();
         self_.transaction_depth = self_.transaction_depth - 1;
         if self_.transaction_depth == 0 {
+            self_.transaction_depth = self_.transaction_depth + 1;
             self.propergate();
+            self_.transaction_depth = self_.transaction_depth - 1;
         }
         result
     }

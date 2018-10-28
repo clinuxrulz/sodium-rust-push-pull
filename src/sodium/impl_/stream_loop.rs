@@ -9,7 +9,7 @@ use sodium::impl_::gc::Trace;
 use std::cell::UnsafeCell;
 
 pub struct StreamLoop<A> {
-    value: Gc<UnsafeCell<Latch<Option<MemoLazy<A>>>>>,
+    value: Gc<UnsafeCell<Option<MemoLazy<A>>>>,
     node: Node
 }
 

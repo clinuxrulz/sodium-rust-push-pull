@@ -1,5 +1,6 @@
 use sodium::impl_::Cell;
 use sodium::impl_::Dep;
+use sodium::impl_::IsLambda0;
 use sodium::impl_::IsLambda1;
 use sodium::impl_::IsLambda2;
 use sodium::impl_::IsLambda3;
@@ -21,59 +22,83 @@ use std::cell::UnsafeCell;
 use std::rc::Rc;
 
 pub struct Stream<A> {
-    pub value: Gc<UnsafeCell<Latch<Option<MemoLazy<A>>>>>,
+    pub value: Gc<UnsafeCell<Option<MemoLazy<A>>>>,
     pub node: Node
 }
 
 impl<A: Clone + Trace + Finalize + 'static> Stream<Option<A>> {
     pub fn filter_option(&self) -> Stream<A> {
-        let sodium_ctx = self.node.sodium_ctx();
+        let sodium_ctx = self.node.sodium_ctx().clone();
         let sodium_ctx = &sodium_ctx;
-        let mut gc_ctx = sodium_ctx.gc_ctx();
         let self_ = self.clone();
-        let self_2 = self.clone();
-        let latch = gc_ctx.new_gc(UnsafeCell::new(Latch::new(
+        Stream::_new(
+            sodium_ctx,
             move || {
-                let self_ = self_.clone();
-                let val_op_op = self_.peek_value();
-                match val_op_op {
-                    Some(val_op) => {
-                        val_op.get().clone().map(|val| {
-                            MemoLazy::new(move || val.clone())
-                        })
+                match self_.peek_value() {
+                    Some(thunk) =>
+                        match thunk.get() {
+                            Some(val) => {
+                                let val = val.clone();
+                                Some(MemoLazy::new(move || val.clone()))
                     },
                     None => None
+                        },
+                    None => None
                 }
-            }
-        )));
-        Stream {
-            value: latch.clone(),
-            node: Node::new(
-                sodium_ctx,
-                move || {
-                    let latch = unsafe { &mut *(*latch).get() };
-                    latch.reset();
-                    return true;
                 },
-                Vec::new(),
-                vec![self_2.node.clone()],
+            vec![self.node.clone()],
                 || {}
             )
         }
     }
-}
 
 impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     pub fn new(sodium_ctx: &SodiumCtx) -> Stream<A> {
+        Stream::_new(
+            sodium_ctx,
+            || None,
+            Vec::new(),
+            || {}
+        )
+    }
+
+    pub fn _new<UPDATE:IsLambda0<Option<MemoLazy<A>>>+'static, CLEANUP: FnMut()+'static>(
+        sodium_ctx: &SodiumCtx,
+        update: UPDATE,
+        deps: Vec<Node>,
+        cleanup: CLEANUP
+    ) -> Stream<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
+        let init_firing = update.apply();
+        let value = gc_ctx.new_gc(UnsafeCell::new(init_firing));
+        let update_deps = update.deps();
+        let sodium_ctx2 = sodium_ctx.clone();
         Stream {
-            value: gc_ctx.new_gc(UnsafeCell::new(Latch::const_(None))),
+            value: value.clone(),
             node: Node::new(
                 sodium_ctx,
-                || false,
-                Vec::new(),
-                Vec::new(),
-                || {}
+                move || {
+                    let sodium_ctx = &sodium_ctx2;
+                    let val_op = update.apply();
+                    if let Some(val) = val_op {
+                        {
+                            let value = unsafe { &mut *(*value).get() };
+                            *value = Some(val);
+                        }
+                        let value = value.clone();
+                        sodium_ctx.post(move || {
+                            println!("stream value cleared");
+                            let value = unsafe { &mut *(*value).get() };
+                            *value = None;
+                        });
+                        true
+                    } else {
+                        false
+                    }
+                },
+                update_deps,
+                deps,
+                cleanup
             )
         }
     }
@@ -83,8 +108,8 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     }
 
     fn peek_value(&self) -> Option<MemoLazy<A>> {
-        let thunk = unsafe { &*(*self.value).get() };
-        thunk.get().clone()
+        let val_op = unsafe { &*(*self.value).get() };
+        val_op.clone()
     }
 
     pub fn map<B: Clone + Trace + Finalize + 'static,F:IsLambda1<A,B> + 'static>(
@@ -93,35 +118,24 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     ) -> Stream<B> {
         let sodium_ctx = self.node.sodium_ctx();
         let sodium_ctx = &sodium_ctx;
-        let mut gc_ctx = sodium_ctx.gc_ctx();
-        let update_deps = f.deps();
-        let f = Rc::new(f);
         let self_ = self.clone();
-        let self_2 = self.clone();
-        let rval_latch = gc_ctx.new_gc(UnsafeCell::new(Latch::new(
+        let f = Rc::new(f);
+        let f_deps = f.deps();
+        Stream::_new(
+            sodium_ctx,
+            Lambda::new(
             move || {
-                let self_ = self_.clone();
+                    self_.peek_value().map(|thunk| {
                 let f = f.clone();
-                self_.peek_value().map(|val| {
-                    MemoLazy::new(move || f.apply(val.get()))
+                        MemoLazy::new(move || f.apply(thunk.get()))
                 })
-            }
-        )));
-        Stream {
-            value: rval_latch.clone(),
-            node: Node::new(
-                sodium_ctx,
-                move || {
-                    let rval_latch = unsafe { &mut *(*rval_latch).get() };
-                    rval_latch.reset();
-                    return true;
                 },
-                update_deps,
-                vec![self_2.node.clone()],
+                f_deps
+            ),
+            vec![self.node.clone()],
                 || {}
             )
         }
-    }
 
     pub fn hold(&self, a: A) -> Cell<A> {
         let sodium_ctx = self.node.sodium_ctx();
@@ -146,17 +160,15 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     pub fn filter<PRED:IsLambda1<A,bool> + 'static>(&self, pred: PRED) -> Stream<A> {
         let sodium_ctx = self.node.sodium_ctx();
         let sodium_ctx = &sodium_ctx;
-        let mut gc_ctx = sodium_ctx.gc_ctx();
-        let update_deps = pred.deps();
-        let pred = Rc::new(pred);
         let self_ = self.clone();
-        let self_2 = self.clone();
-        let latch = gc_ctx.new_gc(UnsafeCell::new(Latch::new(
+        let pred = Rc::new(pred);
+        let pred_deps = pred.deps();
+        Stream::_new(
+            sodium_ctx,
+            Lambda::new(
             move || {
-                let self_ = self_.clone();
-                let pred = pred.clone();
-                match self_.peek_value() {
-                    Some(val) => {
+                    let val_op = self_.peek_value();
+                    if let Some(val) = val_op {
                         let val = val.get();
                         if pred.apply(val) {
                             let val = val.clone();
@@ -164,37 +176,27 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                         } else {
                             None
                         }
-                    },
-                    None => None
-                }
-            }
-        )));
-        Stream {
-            value: latch.clone(),
-            node: Node::new(
-                sodium_ctx,
-                move || {
-                    let latch = unsafe { &mut *(*latch).get() };
-                    latch.reset();
-                    return true;
+                    } else {
+                        None
+                    }
                 },
-                update_deps,
-                vec![self_2.node.clone()],
+                pred_deps
+            ),
+            vec![self.node.clone()],
                 || {}
             )
         }
-    }
 
     pub fn merge<FN:Fn(&A,&A)->A+'static>(&self, sa: Stream<A>, f: FN) -> Stream<A> {
         let sodium_ctx = self.node.sodium_ctx();
         let sodium_ctx = &sodium_ctx;
-        let mut gc_ctx = sodium_ctx.gc_ctx();
-        let latch;
-        {
+        let f_deps = f.deps();
+        let f = Rc::new(f);
+        let node_deps = vec![self.node.clone(), sa.node.clone()];
             let self_ = self.clone();
-            let sa = sa.clone();
-            let f = Rc::new(f);
-            latch = gc_ctx.new_gc(UnsafeCell::new(Latch::new(
+        Stream::_new(
+            sodium_ctx,
+            Lambda::new(
                 move || {
                     let lhs_op = self_.peek_value();
                     let rhs_op = sa.peek_value();
@@ -212,24 +214,13 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                                 None => None
                             }
                     }
-                }
-            )));
-        }
-        Stream {
-            value: latch.clone(),
-            node: Node::new(
-                sodium_ctx,
-                move || {
-                    let latch = unsafe { &mut *(*latch).get() };
-                    latch.reset();
-                    return true;
                 },
-                Vec::new(),
-                vec![self.node.clone(), sa.node.clone()],
+                f_deps
+            ),
+            node_deps,
                 || {}
             )
         }
-    }
 
     pub fn gate(&self, ca: Cell<bool>) -> Stream<A> {
         self.filter(move |_: &A| ca.sample_no_trans())
