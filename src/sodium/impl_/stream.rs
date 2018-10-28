@@ -87,7 +87,6 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                         }
                         let value = value.clone();
                         sodium_ctx.post(move || {
-                            println!("stream value cleared");
                             let value = unsafe { &mut *(*value).get() };
                             *value = None;
                         });
