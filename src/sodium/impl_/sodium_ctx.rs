@@ -78,9 +78,7 @@ impl SodiumCtx {
         let result = code();
         self_.transaction_depth = self_.transaction_depth - 1;
         if self_.transaction_depth == 0 {
-            self_.transaction_depth = self_.transaction_depth + 1;
             self.propergate();
-            self_.transaction_depth = self_.transaction_depth - 1;
         }
         result
     }
@@ -97,6 +95,7 @@ impl SodiumCtx {
                 break;
             }
         }
+        self_.transaction_depth = self_.transaction_depth + 1;
         loop {
             let node_op = self_.to_be_updated.pop();
             match node_op {
@@ -110,6 +109,7 @@ impl SodiumCtx {
                 None => break
             }
         }
+        self_.transaction_depth = self_.transaction_depth - 1;
         loop {
             let mut post_trans = Vec::new();
             swap(&mut self_.post_trans, &mut post_trans);
