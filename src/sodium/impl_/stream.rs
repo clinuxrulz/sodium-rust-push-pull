@@ -45,12 +45,12 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<Option<A>> {
                         },
                     None => None
                 }
-                },
+            },
             vec![self.node.clone()],
-                || {}
-            )
-        }
+            || {}
+        )
     }
+}
 
 impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     pub fn new(sodium_ctx: &SodiumCtx) -> Stream<A> {
@@ -132,9 +132,9 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                 f_deps
             ),
             vec![self.node.clone()],
-                || {}
-            )
-        }
+            || {}
+        )
+    }
 
     pub fn hold(&self, a: A) -> Cell<A> {
         let sodium_ctx = self.node.sodium_ctx();
@@ -179,9 +179,9 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                 pred_deps
             ),
             vec![self.node.clone()],
-                || {}
-            )
-        }
+            || {}
+        )
+    }
 
     pub fn merge<FN:Fn(&A,&A)->A+'static>(&self, sa: Stream<A>, f: FN) -> Stream<A> {
         let sodium_ctx = self.node.sodium_ctx();
@@ -214,9 +214,9 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                 f_deps
             ),
             node_deps,
-                || {}
-            )
-        }
+            || {}
+        )
+    }
 
     pub fn gate(&self, ca: Cell<bool>) -> Stream<A> {
         self.filter(move |_: &A| ca.sample_no_trans())
