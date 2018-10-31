@@ -12,6 +12,8 @@ use std::cmp::Ordering;
 use std::cmp::PartialEq;
 use std::cmp::PartialOrd;
 use std::collections::HashSet;
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::rc::Rc;
 use std::vec::Vec;
 
@@ -129,7 +131,10 @@ impl Node {
         match self_.weak_sodium_ctx.upgrade() {
             Some(sodium_ctx) => {
                 let sodium_ctx = unsafe { &mut *(*sodium_ctx.data).get() };
-                sodium_ctx.to_be_updated.push(self.clone());
+                if (!sodium_ctx.to_be_updated_set.contains(self)) {
+                    sodium_ctx.to_be_updated.push(self.clone());
+                    sodium_ctx.to_be_updated_set.insert(self.clone());
+                }
             },
             None => ()
         }
@@ -239,5 +244,12 @@ impl Eq for Node {}
 impl PartialEq for Node {
     fn eq(&self, other: &Node) -> bool {
         self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Hash for Node {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let data = unsafe { &*(*self.data).get() };
+        data.id.hash(state);
     }
 }

@@ -2,6 +2,7 @@ use sodium::gc::GcCtx;
 use sodium::impl_::Node;
 use std::cell::UnsafeCell;
 use std::collections::BinaryHeap;
+use std::collections::HashSet;
 use std::mem::swap;
 use std::rc::Rc;
 use std::rc::Weak;
@@ -19,6 +20,7 @@ pub struct SodiumCtxData {
     pub next_id: u32,
     pub transaction_depth: u32,
     pub to_be_updated: BinaryHeap<Node>,
+    pub to_be_updated_set: HashSet<Node>,
     pub pre_trans: Vec<Box<FnMut()>>,
     pub post_trans: Vec<Box<FnMut()>>
 }
@@ -31,6 +33,7 @@ impl SodiumCtx {
                 next_id: 0,
                 transaction_depth: 0,
                 to_be_updated: BinaryHeap::new(),
+                to_be_updated_set: HashSet::new(),
                 pre_trans: Vec::new(),
                 post_trans: Vec::new()
             }))
@@ -98,6 +101,7 @@ impl SodiumCtx {
             let node_op = self_.to_be_updated.pop();
             match node_op {
                 Some(node) => {
+                    self_.to_be_updated_set.remove(&node);
                     let mark_dependents_dirty = node.update();
                     if mark_dependents_dirty {
                         node.mark_dependents_dirty();

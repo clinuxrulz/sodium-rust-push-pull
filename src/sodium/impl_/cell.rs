@@ -44,8 +44,8 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         cleanup: CLEANUP
     ) -> Cell<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
-        let value = gc_ctx.new_gc(UnsafeCell::new(init_value));
-        let next_value = value.clone();
+        let value = gc_ctx.new_gc(UnsafeCell::new(init_value.clone()));
+        let next_value = gc_ctx.new_gc(UnsafeCell::new(init_value));
         let update_deps = update.deps();
         let sodium_ctx2 = sodium_ctx.clone();
         Cell {

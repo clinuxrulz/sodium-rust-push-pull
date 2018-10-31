@@ -123,11 +123,11 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         Stream::_new(
             sodium_ctx,
             Lambda::new(
-            move || {
+                move || {
                     self_.peek_value().map(|thunk| {
-                let f = f.clone();
+                        let f = f.clone();
                         MemoLazy::new(move || f.apply(thunk.get()))
-                })
+                    })
                 },
                 f_deps
             ),
@@ -146,10 +146,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
             sodium_ctx,
             MemoLazy::new(move || a.clone()),
             move || {
-                let mut last = last.borrow_mut();
-                let x = last.clone();
-                *last = self_.peek_value().unwrap().get().clone();
-                Some(MemoLazy::new(move || x.clone()))
+                self_.peek_value()
             },
             deps,
             || {}
