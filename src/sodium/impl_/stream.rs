@@ -106,7 +106,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         self.node.to_dep()
     }
 
-    fn peek_value(&self) -> Option<MemoLazy<A>> {
+    pub fn peek_value(&self) -> Option<MemoLazy<A>> {
         let val_op = unsafe { &*(*self.value).get() };
         val_op.clone()
     }

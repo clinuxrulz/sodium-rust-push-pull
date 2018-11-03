@@ -105,6 +105,24 @@ impl Node {
         node
     }
 
+    pub fn set_update<UPDATE: FnMut()->bool + 'static>(&self, update: UPDATE, update_deps: Vec<Dep>) {
+        let data = unsafe { &mut *(*self.data).get() };
+        data.update = Box::new(update);
+        data.update_dependencies = update_deps;
+    }
+
+    pub fn add_dependencies(&self, dependencies: Vec<Node>) {
+        let data = unsafe { &mut *(*self.data).get() };
+        let weak_node = self.downgrade();
+        for dependency in dependencies {
+            {
+                let dependency = unsafe { &mut *(*dependency.data).get() };
+                dependency.dependents.push(weak_node.clone());
+            }
+            data.dependencies.push(dependency);
+        }
+    }
+
     pub fn to_dep(&self) -> Dep {
         Dep {
             gc_dep: self.data.to_dep()
