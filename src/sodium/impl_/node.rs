@@ -113,17 +113,11 @@ impl Node {
 
     pub fn mark_dependents_dirty(&self) {
         let self_ = unsafe { &*(*self).data.get() };
-        match self_.weak_sodium_ctx.upgrade() {
-            Some(sodium_ctx) => {
-                let sodium_ctx = unsafe { &mut *(*sodium_ctx.data).get() };
-                self_.dependents.iter().for_each(|dependent| {
-                    dependent.upgrade().iter().for_each(|dependent| {
-                        sodium_ctx.to_be_updated.push(dependent.clone());
-                    });
-                });
-            },
-            None => ()
-        }
+        self_.dependents.iter().for_each(|dependent| {
+            dependent.upgrade().iter().for_each(|dependent| {
+                dependent.mark_dirty();
+            });
+        });
     }
 
     pub fn mark_dirty(&self) {
@@ -131,7 +125,7 @@ impl Node {
         match self_.weak_sodium_ctx.upgrade() {
             Some(sodium_ctx) => {
                 let sodium_ctx = unsafe { &mut *(*sodium_ctx.data).get() };
-                if (!sodium_ctx.to_be_updated_set.contains(self)) {
+                if !sodium_ctx.to_be_updated_set.contains(self) {
                     sodium_ctx.to_be_updated.push(self.clone());
                     sodium_ctx.to_be_updated_set.insert(self.clone());
                 }

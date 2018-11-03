@@ -242,7 +242,7 @@ fn filter_option() {
 }
 
 #[test]
-fn mergezz() {
+fn merge() {
     let mut sodium_ctx = SodiumCtx::new();
     let sodium_ctx = &mut sodium_ctx;
     {
