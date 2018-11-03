@@ -11,7 +11,10 @@ pub struct MemoLazy<A> {
 
 impl<A: Trace> Trace for MemoLazy<A> {
     fn trace(&self, f: &mut FnMut(&GcDep)) {
-        self.get().trace(f);
+        // TODO: Work out something else here.
+        // it is not safe to trace through the thunk,
+        // due to CellLoop (sampled before loop panic)
+        //self.get().trace(f);
     }
 }
 

@@ -36,6 +36,16 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         )
     }
 
+    pub fn new_lazy(sodium_ctx: &SodiumCtx, value: MemoLazy<A>) -> Cell<A> {
+        Cell::_new(
+            sodium_ctx,
+            value,
+            || None,
+            Vec::new(),
+            || {}
+        )
+    }
+
     pub fn _new<UPDATE:IsLambda0<Option<MemoLazy<A>>>+'static, CLEANUP: FnMut()+'static>(
         sodium_ctx: &SodiumCtx,
         init_value: MemoLazy<A>,
