@@ -49,6 +49,7 @@ impl<A: Trace + Finalize + Clone + 'static> StreamLoop<A> {
             },
             update_deps
         );
+        node.ensure_bigger_than(sa_node.rank());
         node.add_dependencies(vec![sa_node]);
         *looped = true;
     }

@@ -152,6 +152,11 @@ impl Node {
         }
     }
 
+    pub fn rank(&self) -> u32 {
+        let data = unsafe { &*(*self.data).get() };
+        data.rank.clone()
+    }
+
     pub fn ensure_bigger_than(&self, rank: u32) {
         self.ensure_bigger_than2(rank, &mut HashSet::new());
     }
