@@ -8,8 +8,19 @@ use std::rc::Rc;
 pub struct Operational {}
 
 impl Operational {
-    pub fn value<A>(ca: Cell<A>) -> Stream<A> {
-        unimplemented!();
+    pub fn value<A: Clone + Trace + Finalize + 'static>(ca: Cell<A>) -> Stream<A> {
+        let sodium_ctx = ca.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        let deps = vec![ca.node.clone()];
+        Stream::_new(
+            sodium_ctx,
+            move || {
+                let next_value = unsafe { &*(*ca.next_value).get() };
+                Some(next_value.clone())
+            },
+            deps,
+            || {}
+        )
     }
 
     pub fn updates<A: Clone + Trace + Finalize + 'static>(ca: Cell<A>) -> Stream<A> {
