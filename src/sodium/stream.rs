@@ -67,8 +67,8 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     }
 
     pub fn collect_lazy<B,S,F>(&self, init_state: MemoLazy<S>, f: F) -> Stream<B>
-        where B: Clone + 'static,
-              S: Clone + 'static,
+        where B: Clone + Trace + Finalize + 'static,
+              S: Clone + Trace + Finalize + 'static,
               F: IsLambda2<A,S,(B,S)> + 'static
     {
         Stream {

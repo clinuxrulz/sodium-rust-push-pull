@@ -46,16 +46,16 @@ pub trait IsStream<A: Finalize + Trace + Clone + 'static> {
     }
 
     fn collect<B,S,F>(&self, init_state: S, f: F) -> Stream<B>
-        where B: Clone + 'static,
-              S: Clone + 'static,
+        where B: Clone + Trace + Finalize + 'static,
+              S: Clone + Trace + Finalize + 'static,
               F: IsLambda2<A,S,(B,S)> + 'static
     {
         self.collect_lazy(MemoLazy::new(move || init_state.clone()), f)
     }
 
     fn collect_lazy<B,S,F>(&self, init_state: MemoLazy<S>, f: F) -> Stream<B>
-        where B: Clone + 'static,
-              S: Clone + 'static,
+        where B: Clone + Trace + Finalize + 'static,
+              S: Clone + Trace + Finalize + 'static,
               F: IsLambda2<A,S,(B,S)> + 'static
     {
         self.to_stream().collect_lazy(init_state, f)

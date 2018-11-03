@@ -13,6 +13,7 @@ use sodium::impl_::Listener;
 use sodium::impl_::MemoLazy;
 use sodium::impl_::Node;
 use sodium::impl_::SodiumCtx;
+use sodium::impl_::StreamLoop;
 use sodium::gc::Finalize;
 use sodium::gc::Gc;
 use sodium::gc::GcDep;
@@ -141,10 +142,25 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         let sodium_ctx = &sodium_ctx;
         let self_ = self.clone();
         let deps = vec![self_.node.clone()];
-        let last = RefCell::new(a.clone());
         Cell::_new(
             sodium_ctx,
             MemoLazy::new(move || a.clone()),
+            move || {
+                self_.peek_value()
+            },
+            deps,
+            || {}
+        )
+    }
+
+    pub fn hold_lazy(&self, a: MemoLazy<A>) -> Cell<A> {
+        let sodium_ctx = self.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        let self_ = self.clone();
+        let deps = vec![self_.node.clone()];
+        Cell::_new(
+            sodium_ctx,
+            a,
             move || {
                 self_.peek_value()
             },
@@ -223,11 +239,25 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     }
 
     pub fn collect_lazy<B,S,F>(&self, init_state: MemoLazy<S>, f: F) -> Stream<B>
-        where B: Clone + 'static,
-              S: Clone + 'static,
+        where B: Clone + Trace + Finalize + 'static,
+              S: Clone + Trace + Finalize + 'static,
               F: IsLambda2<A,S,(B,S)> + 'static
     {
+        // TODO: Investigate stack overflow caused by this code.
         unimplemented!();
+        let sodium_ctx = self.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        let sodium_ctx2 = sodium_ctx.clone();
+        sodium_ctx2.transaction(|| {
+            let ea = self.clone();
+            let es = StreamLoop::new(sodium_ctx);
+            let s = es.to_stream().hold_lazy(init_state);
+            let ebs = ea.snapshot2(s, f);
+            let eb = ebs.map(|(ref a,ref b):&(B,S)| a.clone());
+            let es_out = ebs.map(|(ref a,ref b):&(B,S)| b.clone());
+            es.loop_(es_out);
+            eb
+        })
     }
 
     pub fn accum_lazy<S,F>(&self, init_state: MemoLazy<S>, f: F) -> Cell<S>
