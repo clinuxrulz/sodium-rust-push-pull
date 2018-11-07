@@ -146,9 +146,15 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         let sodium_ctx = &sodium_ctx;
         let self_ = self.clone();
         let deps = vec![self_.node.clone()];
+        let init_value;
+        if let Some(value) = self_.peek_value() {
+            init_value = value;
+        } else {
+            init_value = sodium_ctx.new_lazy(move || a.clone());
+        }
         Cell::_new(
             sodium_ctx,
-            sodium_ctx.new_lazy(move || a.clone()),
+            init_value,
             move || {
                 self_.peek_value()
             },
