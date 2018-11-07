@@ -62,8 +62,10 @@ impl SodiumCtx {
         }
     }
 
-    pub fn new_stream_sink_with_coalescer<A: Clone + Trace + Finalize + 'static, FN: Fn(&A,&A)->A>(&self, coalescer: FN) -> StreamSink<A> {
-        unimplemented!();
+    pub fn new_stream_sink_with_coalescer<A: Clone + Trace + Finalize + 'static, FN: Fn(&A,&A)->A+'static>(&self, coalescer: FN) -> StreamSink<A> {
+        StreamSink {
+            impl_: impl_::StreamSink::new_with_coalescer(&self.impl_, coalescer)
+        }
     }
 
     pub fn gc_ctx(&self) -> GcCtx {

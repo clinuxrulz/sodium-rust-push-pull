@@ -1,5 +1,4 @@
 use sodium::impl_::Stream;
-use sodium::impl_::Latch;
 use sodium::impl_::MemoLazy;
 use sodium::impl_::Node;
 use sodium::impl_::SodiumCtx;
@@ -13,36 +12,44 @@ use std::rc::Rc;
 
 pub struct StreamSink<A> {
     value: Gc<UnsafeCell<Option<MemoLazy<A>>>>,
-    next_value_op: Gc<UnsafeCell<Option<Option<MemoLazy<A>>>>>,
+    next_value: Gc<UnsafeCell<Option<MemoLazy<A>>>>,
     node: Node,
-    will_clear: Rc<UnsafeCell<bool>>
+    will_clear: Rc<UnsafeCell<bool>>,
+    coalescer_op: Option<Rc<Fn(&A,&A)->A>>
 }
 
 impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
     pub fn new(sodium_ctx: &SodiumCtx) -> StreamSink<A> {
+        StreamSink::_new(sodium_ctx, None)
+    }
+
+    pub fn new_with_coalescer<COALESCER:Fn(&A,&A)->A+'static>(sodium_ctx: &SodiumCtx, coalescer: COALESCER) -> StreamSink<A> {
+        StreamSink::_new(sodium_ctx, Some(Rc::new(coalescer)))
+    }
+
+    pub fn _new(sodium_ctx: &SodiumCtx, coalescer_op: Option<Rc<Fn(&A,&A)->A>>) -> StreamSink<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
         let value = gc_ctx.new_gc(UnsafeCell::new(None));
-        let next_value_op = gc_ctx.new_gc(UnsafeCell::new(None));
+        let next_value = gc_ctx.new_gc(UnsafeCell::new(None));
         StreamSink {
             value: value.clone(),
-            next_value_op: next_value_op.clone(),
+            next_value: next_value.clone(),
             node: Node::new(
                 sodium_ctx,
                 move || {
-                    let next_value_op = unsafe { &mut *(*next_value_op).get() };
-                    let mut next_value_op2 = None;
-                    swap(next_value_op, &mut next_value_op2);
+                    let next_value = unsafe { &mut *(*next_value).get() };
+                    let mut next_value2 = None;
+                    swap(next_value, &mut next_value2);
                     let value = unsafe { &mut *(*value).get() };
-                    if let Some(next_value) = next_value_op2 {
-                        *value = next_value.clone();
-                    }
+                    *value = next_value2.clone();
                     return true;
                 },
                 Vec::new(),
                 Vec::new(),
                 || {}
             ),
-            will_clear: Rc::new(UnsafeCell::new(false))
+            will_clear: Rc::new(UnsafeCell::new(false)),
+            coalescer_op: coalescer_op
         }
     }
 
@@ -60,8 +67,23 @@ impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
                     *will_clear = false;
                 });
             }
-            let next_value_op = unsafe { &mut *(*self.next_value_op).get() };
-            *next_value_op = Some(Some(sodium_ctx.new_lazy(move || value.clone())));
+            let next_value = unsafe { &mut *(*self.next_value).get() };
+            match &self.coalescer_op {
+                &Some(ref coalescer) => {
+                    let next_value2 =
+                        match next_value {
+                            &mut Some(ref next_value3) => {
+                                let next_value4 = coalescer(next_value3.get(), &value);
+                                Some(sodium_ctx.new_lazy(move || next_value4.clone()))
+                            },
+                            &mut None => Some(sodium_ctx.new_lazy(move || value.clone()))
+                        };
+                    *next_value = next_value2;
+                },
+                &None => {
+                    *next_value = Some(sodium_ctx.new_lazy(move || value.clone()));
+                }
+            };
             self.node.mark_dirty();
         });
     }
@@ -78,9 +100,10 @@ impl<A: Clone + Trace + Finalize + 'static> Clone for StreamSink<A> {
     fn clone(&self) -> Self {
         StreamSink {
             value: self.value.clone(),
-            next_value_op: self.next_value_op.clone(),
+            next_value: self.next_value.clone(),
             node: self.node.clone(),
-            will_clear: self.will_clear.clone()
+            will_clear: self.will_clear.clone(),
+            coalescer_op: self.coalescer_op.clone()
         }
     }
 }

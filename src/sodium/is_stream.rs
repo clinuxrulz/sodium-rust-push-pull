@@ -84,7 +84,7 @@ pub trait IsStream<A: Finalize + Trace + Clone + 'static> {
     }
 
     fn or_else<SA: IsStream<A>>(&self, sa: SA) -> Stream<A> {
-        self.merge(sa, |_l, r| r.clone())
+        self.merge(sa, |l, _r| l.clone())
     }
 
     fn snapshot<B,CB:IsCell<B>>(&self, cb: CB) -> Stream<B> where B: Trace + Finalize + Clone + 'static {
