@@ -257,8 +257,6 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
               S: Clone + Trace + Finalize + 'static,
               F: IsLambda2<A,S,(B,S)> + 'static
     {
-        // TODO: Investigate stack overflow caused by this code.
-        unimplemented!();
         let sodium_ctx = self.node.sodium_ctx();
         let sodium_ctx = &sodium_ctx;
         let sodium_ctx2 = sodium_ctx.clone();

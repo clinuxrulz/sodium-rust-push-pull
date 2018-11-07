@@ -10,6 +10,7 @@ use sodium::impl_::IsLambda6;
 use sodium::impl_::Listener;
 use sodium::impl_::MemoLazy;
 use sodium::impl_::Node;
+use sodium::impl_::Operational;
 use sodium::impl_::SodiumCtx;
 use sodium::impl_::Stream;
 use sodium::gc::Finalize;
@@ -337,7 +338,10 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
     }
 
     pub fn switch_c(cca: Cell<Cell<A>>) -> Cell<A> {
-        unimplemented!();
+        Cell
+            ::switch_s(cca.map(|ca:&Cell<A>| Operational::updates(ca.clone())))
+            .merge(Operational::updates(cca.clone()).map(|ca:&Cell<A>| ca._next_value_thunk().get().clone()), |_l,r| r.clone())
+            .hold(cca.sample_no_trans().sample_no_trans())
     }
 
     pub fn listen<CALLBACK:FnMut(&A)+'static>(

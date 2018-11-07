@@ -171,6 +171,32 @@ impl Node {
         }
     }
 
+    pub fn undirty(&self) {
+        let self_ = unsafe { &*(*self).data.get() };
+        match self_.weak_sodium_ctx.upgrade() {
+            Some(sodium_ctx) => {
+                let sodium_ctx = unsafe { &mut *(*sodium_ctx.data).get() };
+                sodium_ctx.to_be_updated_set.remove(self);
+                sodium_ctx.to_be_updated.clear();
+                for node in &sodium_ctx.to_be_updated_set {
+                    sodium_ctx.to_be_updated.push(node.clone());
+                }
+            },
+            None => ()
+        }
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        let self_ = unsafe { &*(*self).data.get() };
+        match self_.weak_sodium_ctx.upgrade() {
+            Some(sodium_ctx) => {
+                let sodium_ctx = unsafe { &*(*sodium_ctx.data).get() };
+                sodium_ctx.to_be_updated_set.contains(self)
+            },
+            None => false
+        }
+    }
+
     pub fn rank(&self) -> u32 {
         let data = unsafe { &*(*self.data).get() };
         data.rank.clone()

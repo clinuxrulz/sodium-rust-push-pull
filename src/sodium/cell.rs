@@ -80,7 +80,9 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
     }
 
     pub fn switch_c<CA:IsCell<A> + Trace + Finalize + Clone + 'static,CCA:IsCell<CA>>(cca: CCA) -> Cell<A> {
-        unimplemented!();
+        Cell {
+            impl_: impl_::Cell::switch_c(cca.to_cell().impl_.map(|ca:&CA| ca.to_cell().impl_))
+        }
     }
 
     pub fn listen<CALLBACK:FnMut(&A)+'static>(
