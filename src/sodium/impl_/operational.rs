@@ -49,11 +49,18 @@ impl Operational {
     }
 
     pub fn defer<A: Clone + Trace + Finalize + 'static>(sa: Stream<A>) -> Stream<A> {
-        let sodium_ctx = sa.node.sodium_ctx();
+        Operational::split(sa.map(|a:&A| vec![a.clone()]))
+    }
+
+    pub fn split<C,A>(s: Stream<C>) -> Stream<A>
+        where A: Clone + Trace + Finalize + 'static,
+              C: IntoIterator<Item=A> + Clone + Trace + Finalize + 'static
+    {
+        let sodium_ctx = s.node.sodium_ctx();
         let sodium_ctx = &sodium_ctx;
         let mut gc_ctx = sodium_ctx.gc_ctx();
         let gc_ctx = &mut gc_ctx;
-        let deps = vec![sa.node.clone()];
+        let deps = vec![s.node.clone()];
         let value: Gc<UnsafeCell<Option<MemoLazy<A>>>> = gc_ctx.new_gc(UnsafeCell::new(None));
         let sodium_ctx2 = sodium_ctx.clone();
         let node2;
@@ -90,17 +97,22 @@ impl Operational {
                     let sodium_ctx = &sodium_ctx2;
                     let sodium_ctx2 = sodium_ctx.clone();
                     let node2 = node2.clone();
-                    let sa_value_op = sa.peek_value();
+                    let s_value_op = s.peek_value();
                     let value = value.clone();
-                    if let Some(sa_value) = sa_value_op {
+                    if let Some(s_value) = s_value_op {
                         sodium_ctx.post(move || {
                             let sodium_ctx = &sodium_ctx2;
                             let node2 = node2.clone();
-                            let sa_value = sa_value.clone();
+                            let s_value = s_value.clone();
                             let value = unsafe { &mut *(*value).get() };
-                            sodium_ctx.transaction(|| {
-                                *value = Some(sa_value);
-                                node2.mark_dependents_dirty();
+                            s_value.get().clone().into_iter().for_each(move |a| {
+                                let sodium_ctx2 = sodium_ctx.clone();
+                                sodium_ctx.transaction(|| {
+                                    let sodium_ctx = &sodium_ctx2;
+                                    let a = a.clone();
+                                    *value = Some(sodium_ctx.new_lazy(move || a.clone()));
+                                    node2.mark_dependents_dirty();
+                                });
                             });
                         });
                     }
@@ -113,12 +125,5 @@ impl Operational {
         }
         node2.add_dependencies(vec![node1]);
         result
-    }
-
-    pub fn split<C,A>(s: Stream<C>) -> Stream<A>
-        where A: Clone + 'static,
-              C: IntoIterator<Item=A> + 'static + Clone
-    {
-        unimplemented!();
     }
 }
