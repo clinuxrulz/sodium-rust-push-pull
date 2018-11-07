@@ -273,10 +273,20 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     }
 
     pub fn accum_lazy<S,F>(&self, init_state: MemoLazy<S>, f: F) -> Cell<S>
-        where S: Clone + 'static,
+        where S: Clone + Trace + Finalize + 'static,
               F: IsLambda2<A,S,S> + 'static
     {
-        unimplemented!();
+        let sodium_ctx = self.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        let sodium_ctx2 = sodium_ctx.clone();
+        sodium_ctx.transaction(|| {
+            let sodium_ctx = &sodium_ctx2;
+            let es: StreamLoop<S> = StreamLoop::new(sodium_ctx);
+            let s = es.to_stream().hold_lazy(init_state);
+            let es_out = self.snapshot2(s.clone(), f);
+            es.loop_(es_out);
+            s
+        })
     }
 
     pub fn once(&self) -> Stream<A> {

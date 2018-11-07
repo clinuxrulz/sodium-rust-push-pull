@@ -77,7 +77,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     }
 
     pub fn accum_lazy<S,F>(&self, init_state: MemoLazy<S>, f: F) -> Cell<S>
-        where S: Clone + 'static,
+        where S: Clone + Trace + Finalize + 'static,
               F: IsLambda2<A,S,S> + 'static
     {
         Cell {
