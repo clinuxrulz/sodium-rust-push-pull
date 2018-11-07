@@ -271,7 +271,6 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
         let gc_ctx = &mut gc_ctx;
         let sa_init = csa.sample_no_trans();
-        let deps_init = vec![csa.node.clone(), sa_init.node.clone()];
         let value: Gc<UnsafeCell<Option<MemoLazy<A>>>> = gc_ctx.new_gc(UnsafeCell::new(None));
         let node2;
         {
