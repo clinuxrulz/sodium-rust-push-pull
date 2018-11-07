@@ -111,6 +111,25 @@ impl Node {
         data.update_dependencies = update_deps;
     }
 
+    pub fn remove_all_dependencies(&self) {
+        let data = unsafe { &mut *(*self.data).get() };
+        let self_id = data.id.clone();
+        for dependency in &data.dependencies {
+            {
+                let dependency = unsafe { &mut *(*dependency.data).get() };
+                dependency.dependents.retain(|weak_node| {
+                    match weak_node.upgrade() {
+                        Some(node2) => {
+                            let node2_data = unsafe { &mut *(*self.data).get() };
+                            node2_data.id != self_id
+                        },
+                        None => false
+                    }
+                });
+            }
+        }
+    }
+
     pub fn add_dependencies(&self, dependencies: Vec<Node>) {
         let data = unsafe { &mut *(*self.data).get() };
         let weak_node = self.downgrade();

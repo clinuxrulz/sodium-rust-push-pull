@@ -266,7 +266,75 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
     }
 
     pub fn switch_s(csa: Cell<Stream<A>>) -> Stream<A> {
-        unimplemented!();
+        let sodium_ctx = csa.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        let mut gc_ctx = sodium_ctx.gc_ctx();
+        let gc_ctx = &mut gc_ctx;
+        let sa_init = csa.sample_no_trans();
+        let deps_init = vec![csa.node.clone(), sa_init.node.clone()];
+        let value: Gc<UnsafeCell<Option<MemoLazy<A>>>> = gc_ctx.new_gc(UnsafeCell::new(None));
+        let node2;
+        {
+            let sodium_ctx2 = sodium_ctx.clone();
+            let value = value.clone();
+            let csa = csa.clone();
+            node2 = Node::new(
+                sodium_ctx,
+                move || {
+                    let sodium_ctx = &sodium_ctx2;
+                    let csa_next_value = csa._next_value_thunk();
+                    let sa = csa_next_value.get().clone();
+                    if let Some(sa_value) = sa.peek_value() {
+                        {
+                            let value = unsafe { &mut *(*value).get() };
+                            *value = Some(sa_value.clone());
+                        }
+                        let value = value.clone();
+                        sodium_ctx.post(move || {
+                            let value = unsafe { &mut *(*value).get() };
+                            *value = None;
+                        });
+                        true
+                    } else {
+                        false
+                    }
+                },
+                Vec::new(),
+                vec![sa_init.node.clone()],
+                || {}
+            );
+        }
+        let result = Stream {
+            value: value.clone(),
+            node: node2.clone()
+        };
+        let node1_deps = vec![csa.node.clone()];
+        let node1;
+        {
+            let sodium_ctx2 = sodium_ctx.clone();
+            let node2 = node2.clone();
+            node1 = Node::new(
+                sodium_ctx,
+                move || {
+                    let sodium_ctx = &sodium_ctx2;
+                    let node2 = node2.clone();
+                    let csa = csa.clone();
+                    sodium_ctx.post(move || {
+                        let new_inner_node = csa.sample_no_trans().node.clone();
+                        node2.remove_all_dependencies();
+                        node2.ensure_bigger_than(new_inner_node.rank());
+                        node2.add_dependencies(vec![new_inner_node]);
+                    });
+                    false
+                },
+                Vec::new(),
+                node1_deps,
+                || {}
+            );
+        }
+        node2.ensure_bigger_than(node1.rank());
+        node2.add_dependencies(vec![node1]);
+        result
     }
 
     pub fn switch_c(cca: Cell<Cell<A>>) -> Cell<A> {
