@@ -158,6 +158,9 @@ impl Node {
     }
 
     pub fn ensure_bigger_than(&self, rank: u32) {
+        let sodium_ctx = self.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        sodium_ctx.schedule_update_sort();
         self.ensure_bigger_than2(rank, &mut HashSet::new());
     }
 

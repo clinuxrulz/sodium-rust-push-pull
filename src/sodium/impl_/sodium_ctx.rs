@@ -25,6 +25,7 @@ pub struct SodiumCtxData {
     pub transaction_depth: u32,
     pub to_be_updated: BinaryHeap<Node>,
     pub to_be_updated_set: HashSet<Node>,
+    pub resort_required: bool,
     pub pre_trans: Vec<Box<FnMut()>>,
     pub post_trans: Vec<Box<FnMut()>>
 }
@@ -38,6 +39,7 @@ impl SodiumCtx {
                 transaction_depth: 0,
                 to_be_updated: BinaryHeap::new(),
                 to_be_updated_set: HashSet::new(),
+                resort_required: false,
                 pre_trans: Vec::new(),
                 post_trans: Vec::new()
             }))
@@ -93,8 +95,20 @@ impl SodiumCtx {
         result
     }
 
+    pub fn schedule_update_sort(&self) {
+        let self_ = unsafe { &mut *(*self.data).get() };
+        self_.resort_required = true;
+    }
+
     fn propergate(&self) {
         let self_ = unsafe { &mut *(*self.data).get() };
+        if self_.resort_required {
+            self_.to_be_updated.clear();
+            for node in &self_.to_be_updated_set {
+                self_.to_be_updated.push(node.clone());
+            }
+            self_.resort_required = false;
+        }
         loop {
             let mut pre_trans = Vec::new();
             swap(&mut self_.pre_trans, &mut pre_trans);
