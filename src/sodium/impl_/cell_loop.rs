@@ -22,7 +22,7 @@ impl<A: Trace + Finalize + Clone + 'static> CellLoop<A> {
             let init_value = init_value.clone();
             cell = Cell::new_lazy(
                 sodium_ctx,
-                MemoLazy::new(move || {
+                sodium_ctx.new_lazy(move || {
                     let init_value = unsafe { &*(*init_value).get() };
                     if let &Some(ref val) = init_value {
                         val.clone()
@@ -58,7 +58,7 @@ impl<A: Trace + Finalize + Clone + 'static> CellLoop<A> {
                     let ca = ca.clone();
                     let ca_next_value = unsafe { &*(*ca.next_value).get() };
                     let x = ca_next_value.get().clone();
-                    *next_value = MemoLazy::new(move || {
+                    *next_value = sodium_ctx.new_lazy(move || {
                         x.clone()
                     });
                 }

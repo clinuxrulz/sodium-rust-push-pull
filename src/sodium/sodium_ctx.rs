@@ -1,6 +1,8 @@
 use sodium::Cell;
 use sodium::CellLoop;
 use sodium::CellSink;
+use sodium::IsLambda0;
+use sodium::MemoLazy;
 use sodium::Stream;
 use sodium::StreamLoop;
 use sodium::StreamSink;
@@ -18,6 +20,10 @@ impl SodiumCtx {
         SodiumCtx {
             impl_: impl_::SodiumCtx::new()
         }
+    }
+
+    pub fn new_lazy<A: Trace + Finalize + Clone + 'static,THUNK: IsLambda0<A> + 'static>(&self, thunk: THUNK) -> MemoLazy<A> {
+        self.impl_.new_lazy(thunk)
     }
 
     pub fn new_cell<A: Clone + Trace + Finalize + 'static>(&self, value: A) -> Cell<A> {

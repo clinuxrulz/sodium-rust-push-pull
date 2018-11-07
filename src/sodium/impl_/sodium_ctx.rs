@@ -1,4 +1,8 @@
+use sodium::gc::Finalize;
 use sodium::gc::GcCtx;
+use sodium::gc::Trace;
+use sodium::impl_::IsLambda0;
+use sodium::impl_::MemoLazy;
 use sodium::impl_::Node;
 use std::cell::UnsafeCell;
 use std::collections::BinaryHeap;
@@ -49,6 +53,12 @@ impl SodiumCtx {
         WeakSodiumCtx {
             data: Rc::downgrade(&self.data)
         }
+    }
+
+    pub fn new_lazy<A: Trace + Finalize + Clone + 'static, THUNK: IsLambda0<A> + 'static>(&self, thunk: THUNK) -> MemoLazy<A> {
+        let mut gc_ctx = self.gc_ctx();
+        let gc_ctx = &mut gc_ctx;
+        MemoLazy::new(gc_ctx, thunk)
     }
 
     pub fn new_id(&self) -> u32 {

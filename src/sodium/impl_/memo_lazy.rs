@@ -1,45 +1,69 @@
+use sodium::impl_::Dep;
+use sodium::impl_::IsLambda0;
 use sodium::impl_::gc::Finalize;
+use sodium::impl_::gc::Gc;
+use sodium::impl_::gc::GcCtx;
 use sodium::impl_::gc::GcDep;
 use sodium::impl_::gc::Trace;
 use std::cell::UnsafeCell;
-use std::rc::Rc;
 
 pub struct MemoLazy<A> {
-    thunk: Rc<Fn()->A>,
+    data: Gc<MemoLazyData<A>>
+}
+
+pub struct MemoLazyData<A> {
+    thunk: Box<IsLambda0<A>>,
     val_op: UnsafeCell<Option<A>>
 }
 
 impl<A: Trace> Trace for MemoLazy<A> {
     fn trace(&self, f: &mut FnMut(&GcDep)) {
-        // TODO: Work out something else here.
-        // it is not safe to trace through the thunk,
-        // due to CellLoop (sampled before loop panic)
-        //self.get().trace(f);
+        f(&self.data.to_dep());
     }
 }
 
 impl<A: Finalize> Finalize for MemoLazy<A> {
     fn finalize(&mut self) {
-        self.get_mut().finalize();
     }
 }
 
-impl<A> MemoLazy<A> {
-    pub fn new<F: Fn()->A + 'static>(thunk: F) -> MemoLazy<A> {
+impl<A: Trace> Trace for MemoLazyData<A> {
+    fn trace(&self, f: &mut FnMut(&GcDep)) {
+        for dep in self.thunk.deps() {
+            let Dep { gc_dep: dep2 } = dep;
+            f(&dep2);
+        }
+        self.val_op.trace(f);
+    }
+}
+
+impl<A: Finalize> Finalize for MemoLazyData<A> {
+    fn finalize(&mut self) {
+        self.val_op.finalize();
+    }    
+}
+
+impl<A: Trace + Finalize + 'static> MemoLazy<A> {
+    pub fn new<F: IsLambda0<A> + 'static>(gc_ctx: &mut GcCtx, thunk: F) -> MemoLazy<A> {
         MemoLazy {
-            thunk: Rc::new(thunk),
-            val_op: UnsafeCell::new(None)
+            data: gc_ctx.new_gc(
+                MemoLazyData {
+                    thunk: Box::new(thunk),
+                    val_op: UnsafeCell::new(None)
+                }
+            )
         }
     }
 
     pub fn get(&self) -> &A {
-        let val_op = unsafe { &*self.val_op.get() };
+        let self_ = &*self.data;
+        let val_op = unsafe { &*self_.val_op.get() };
         match val_op {
             Some(ref val) => val,
             None => {
-                let val = (self.thunk)();
+                let val = (self_.thunk).apply();
                 unsafe {
-                    *self.val_op.get() = Some(val);
+                    *self_.val_op.get() = Some(val);
                 }
                 self.get()
             }
@@ -47,13 +71,20 @@ impl<A> MemoLazy<A> {
     }
 
     pub fn get_mut(&mut self) -> &mut A {
-        let val_op = unsafe { &mut *self.val_op.get() };
+        let val_op;
+        {
+            let self_ = &*self.data;
+            val_op = unsafe { &mut *self_.val_op.get() };
+        }
         match val_op {
             Some(ref mut val) => val,
             None => {
-                let val = (self.thunk)();
-                unsafe {
-                    *self.val_op.get() = Some(val);
+                {
+                    let self_ = &*self.data;
+                    let val = (self_.thunk).apply();
+                    unsafe {
+                        *self_.val_op.get() = Some(val);
+                    }
                 }
                 self.get_mut()
             }
@@ -63,10 +94,8 @@ impl<A> MemoLazy<A> {
 
 impl<A: Clone> Clone for MemoLazy<A> {
     fn clone(&self) -> Self {
-        let val_op = unsafe { &*self.val_op.get() };
         MemoLazy {
-            thunk: self.thunk.clone(),
-            val_op: UnsafeCell::new(val_op.clone())
+            data: self.data.clone()
         }
     }
 }

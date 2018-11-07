@@ -32,17 +32,19 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<Option<A>> {
         let sodium_ctx = self.node.sodium_ctx().clone();
         let sodium_ctx = &sodium_ctx;
         let self_ = self.clone();
+        let sodium_ctx2 = sodium_ctx.clone();
         Stream::_new(
             sodium_ctx,
             move || {
+                let sodium_ctx = &sodium_ctx2;
                 match self_.peek_value() {
                     Some(thunk) =>
                         match thunk.get() {
                             Some(val) => {
                                 let val = val.clone();
-                                Some(MemoLazy::new(move || val.clone()))
-                    },
-                    None => None
+                                Some(sodium_ctx.new_lazy(move || val.clone()))
+                            },
+                            None => None
                         },
                     None => None
                 }
@@ -121,13 +123,15 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         let self_ = self.clone();
         let f = Rc::new(f);
         let f_deps = f.deps();
+        let sodium_ctx2 = sodium_ctx.clone();
         Stream::_new(
             sodium_ctx,
             Lambda::new(
                 move || {
+                    let sodium_ctx = &sodium_ctx2;
                     self_.peek_value().map(|thunk| {
                         let f = f.clone();
-                        MemoLazy::new(move || f.apply(thunk.get()))
+                        sodium_ctx.new_lazy(move || f.apply(thunk.get()))
                     })
                 },
                 f_deps
@@ -144,7 +148,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         let deps = vec![self_.node.clone()];
         Cell::_new(
             sodium_ctx,
-            MemoLazy::new(move || a.clone()),
+            sodium_ctx.new_lazy(move || a.clone()),
             move || {
                 self_.peek_value()
             },
@@ -175,16 +179,18 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         let self_ = self.clone();
         let pred = Rc::new(pred);
         let pred_deps = pred.deps();
+        let sodium_ctx2 = sodium_ctx.clone();
         Stream::_new(
             sodium_ctx,
             Lambda::new(
-            move || {
+                move || {
+                    let sodium_ctx = &sodium_ctx2;
                     let val_op = self_.peek_value();
                     if let Some(val) = val_op {
                         let val = val.get();
                         if pred.apply(val) {
                             let val = val.clone();
-                            Some(MemoLazy::new(move || val.clone()))
+                            Some(sodium_ctx.new_lazy(move || val.clone()))
                         } else {
                             None
                         }
@@ -205,11 +211,13 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         let f_deps = f.deps();
         let f = Rc::new(f);
         let node_deps = vec![self.node.clone(), sa.node.clone()];
-            let self_ = self.clone();
+        let self_ = self.clone();
+        let sodium_ctx2 = sodium_ctx.clone();
         Stream::_new(
             sodium_ctx,
             Lambda::new(
                 move || {
+                    let sodium_ctx = &sodium_ctx2;
                     let lhs_op = self_.peek_value();
                     let rhs_op = sa.peek_value();
                     let f = f.clone();
@@ -217,7 +225,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                         Some(lhs) =>
                             match rhs_op {
                                 Some(rhs) =>
-                                    Some(MemoLazy::new(move || f(lhs.get(), rhs.get()))),
+                                    Some(sodium_ctx.new_lazy(move || f(lhs.get(), rhs.get()))),
                                 None => Some(lhs)
                             },
                         None =>

@@ -61,7 +61,7 @@ impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
                 });
             }
             let next_value_op = unsafe { &mut *(*self.next_value_op).get() };
-            *next_value_op = Some(Some(MemoLazy::new(move || value.clone())));
+            *next_value_op = Some(Some(sodium_ctx.new_lazy(move || value.clone())));
             self.node.mark_dirty();
         });
     }

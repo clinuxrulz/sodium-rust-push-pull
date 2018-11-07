@@ -29,7 +29,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
     pub fn new(sodium_ctx: &SodiumCtx, value: A) -> Cell<A> {
         Cell::_new(
             sodium_ctx,
-            MemoLazy::new(move || value.clone()),
+            sodium_ctx.new_lazy(move || value.clone()),
             || None,
             Vec::new(),
             || {}
@@ -121,18 +121,20 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         {
             let self_ = self.clone();
             let f = f.clone();
-            init_value = MemoLazy::new(move || {
+            init_value = sodium_ctx.new_lazy(move || {
                 f.apply(&self_.sample_no_trans())
             });
         }
         let node_deps = vec![self_.node.clone()];
+        let sodium_ctx2 = sodium_ctx.clone();
         Cell::_new(
             sodium_ctx,
             init_value,
             Lambda::new(move || {
+                let sodium_ctx = &sodium_ctx2;
                 let f = f.clone();
                 let a_thunk = self_._next_value_thunk();
-                Some(MemoLazy::new(move || f.apply(a_thunk.get())))
+                Some(sodium_ctx.new_lazy(move || f.apply(a_thunk.get())))
             }, update_deps),
             node_deps,
             || {}
@@ -155,16 +157,18 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
             let f = f.clone();
             let ca = ca.clone();
             let cb = cb.clone();
-            init_value = MemoLazy::new(move || {
+            init_value = sodium_ctx.new_lazy(move || {
                 f.apply(&ca.sample_no_trans(), &cb.sample_no_trans())
             })
         }
+        let sodium_ctx2 = sodium_ctx.clone();
         let update = Lambda::new(
             move || {
+                let sodium_ctx = &sodium_ctx2;
                 let a_thunk = ca._next_value_thunk();
                 let b_thunk = cb._next_value_thunk();
                         let f = f.clone();
-                Some(MemoLazy::new(move || {
+                Some(sodium_ctx.new_lazy(move || {
                             f.apply(a_thunk.get(), b_thunk.get())
                 }))
             },

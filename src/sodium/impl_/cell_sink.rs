@@ -22,7 +22,7 @@ impl<A: Trace + Finalize + Clone + 'static> CellSink<A> {
             next_value_op: next_value_op.clone(),
             cell: Cell::_new(
                 sodium_ctx,
-                MemoLazy::new(move || value.clone()),
+                sodium_ctx.new_lazy(move || value.clone()),
                 Lambda::new(
                     move || {
                         let next_value_op = unsafe { &*(*next_value_op).get() };
@@ -40,7 +40,7 @@ impl<A: Trace + Finalize + Clone + 'static> CellSink<A> {
         let sodium_ctx = self.cell.node.sodium_ctx();
         sodium_ctx.transaction(|| {
             let next_value_op = unsafe { &mut *(*self.next_value_op).get() };
-            *next_value_op = Some(MemoLazy::new(move || value.clone()));
+            *next_value_op = Some(sodium_ctx.new_lazy(move || value.clone()));
             self.cell.node.mark_dirty();
         });
     }
