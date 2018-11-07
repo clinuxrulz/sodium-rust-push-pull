@@ -290,7 +290,59 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     }
 
     pub fn once(&self) -> Stream<A> {
-        unimplemented!();
+        let sodium_ctx = self.node.sodium_ctx();
+        let sodium_ctx = &sodium_ctx;
+        let sodium_ctx2 = sodium_ctx.clone();
+        sodium_ctx.transaction(|| {
+            let sodium_ctx = &sodium_ctx2;
+            let mut gc_ctx = sodium_ctx.gc_ctx();
+            let gc_ctx = &mut gc_ctx;
+            let init_firing = self.peek_value();
+            let init_firing_is_some = init_firing.is_some();
+            let value = gc_ctx.new_gc(UnsafeCell::new(init_firing));
+            let self_ = self.clone();
+            let deps = if init_firing_is_some { Vec::new() } else { vec![self_.node.clone()] };
+            let node_self: Rc<UnsafeCell<Option<Node>>> = Rc::new(UnsafeCell::new(None));
+            let node;
+            {
+                let value = value.clone();
+                let node_self = node_self.clone();
+                let sodium_ctx2 = sodium_ctx.clone();
+                node = Node::new(
+                    &sodium_ctx,
+                    move || {
+                        let sodium_ctx = &sodium_ctx2;
+                        {
+                            let value = unsafe { &mut *(*value).get() };
+                            *value = self_.peek_value();
+                            if value.is_some() {
+                                let node_self = unsafe { &*(*node_self).get() };
+                                if let &Some(ref node_self2) = node_self {
+                                    node_self2.remove_all_dependencies();
+                                }
+                            }
+                        }
+                        let value = value.clone();
+                        sodium_ctx.post(move || {
+                            let value = unsafe { &mut *(*value).get() };
+                            *value = None;
+                        });
+                        true
+                    },
+                    Vec::new(),
+                    deps,
+                    || {}
+                );
+            }
+            {
+                let node_self = unsafe { &mut *(*node_self).get() };
+                *node_self = Some(node.clone());
+            }
+            Stream {
+                value,
+                node
+            }
+        })
     }
 
     pub fn snapshot<B>(&self, cb: Cell<B>) -> Stream<B> where B: Trace + Finalize + Clone + 'static {
