@@ -45,6 +45,7 @@ impl Node {
         mut cleanup: CLEANUP
     ) -> Node {
         let id = sodium_ctx.new_id();
+        sodium_ctx.inc_node_count();
         let mut rank = 0;
         for dependency in &dependencies {
             let dependency = unsafe { &*(*dependency.data).get() };
@@ -52,7 +53,7 @@ impl Node {
                 rank = dependency.rank + 1;
             }
         }
-        let self_: Rc<UnsafeCell<Option<Node>>> = Rc::new(UnsafeCell::new(None));
+        let self_: Rc<UnsafeCell<Option<WeakNode>>> = Rc::new(UnsafeCell::new(None));
         let cleanup2;
         {
             let self_ = self_.clone();
@@ -61,19 +62,24 @@ impl Node {
                 let self_ = unsafe { &mut *(*self_).get() };
                 match self_ {
                     Some(ref mut self_) => {
-                        let self_ = unsafe { &*(*self_.data).get() };
-                        self_.dependencies.iter().for_each(|dependency| {
-                            let dependency = unsafe { &mut *(*dependency.data).get() };
-                            dependency.dependents.retain(|dependent| {
-                                match dependent.upgrade() {
-                                    Some(dependent) => {
-                                        let dependent = unsafe { &*(*dependent.data).get() };
-                                        dependent.id != self_.id
-                                    },
-                                    None => false
-                                }
-                            });
-                        });
+                        match self_.upgrade() {
+                            Some(self_2) => {
+                                let self_ = unsafe { &*(*self_2.data).get() };
+                                self_.dependencies.iter().for_each(|dependency| {
+                                    let dependency = unsafe { &mut *(*dependency.data).get() };
+                                    dependency.dependents.retain(|dependent| {
+                                        match dependent.upgrade() {
+                                            Some(dependent) => {
+                                                let dependent = unsafe { &*(*dependent.data).get() };
+                                                dependent.id != self_.id
+                                            },
+                                            None => false
+                                        }
+                                    });
+                                });
+                            },
+                            None => ()
+                        }
                     },
                     None => ()
                 }
@@ -95,7 +101,7 @@ impl Node {
             ))
         };
         unsafe {
-            *(*self_).get() = Some(node.clone());
+            *(*self_).get() = Some(node.downgrade());
         };
         let weak_node = node.downgrade();
         for dependency in &dependencies {
@@ -111,6 +117,13 @@ impl Node {
         data.update_dependencies = update_deps;
     }
 
+    pub fn add_update_deps(&self, update_deps: Vec<Dep>) {
+        let data = unsafe { &mut *(*self.data).get() };
+        for dep in update_deps {
+            data.update_dependencies.push(dep);
+        }
+    }
+
     pub fn remove_all_dependencies(&self) {
         let data = unsafe { &mut *(*self.data).get() };
         let self_id = data.id.clone();
@@ -120,7 +133,7 @@ impl Node {
                 dependency.dependents.retain(|weak_node| {
                     match weak_node.upgrade() {
                         Some(node2) => {
-                            let node2_data = unsafe { &mut *(*self.data).get() };
+                            let node2_data = unsafe { &mut *(*node2.data).get() };
                             node2_data.id != self_id
                         },
                         None => false
@@ -244,9 +257,18 @@ impl Node {
     }
 }
 
+impl Drop for NodeData {
+    fn drop(&mut self) {
+        match self.weak_sodium_ctx.upgrade() {
+            Some(sodium_ctx) => sodium_ctx.dec_node_count(),
+            None => ()
+        }
+    }
+}
+
 impl WeakNode {
     pub fn upgrade(&self) -> Option<Node> {
-        self.data.upgrade().map(|data| Node { data })
+        self.data.upgrade().map(|data| Node { data } )
     }
 }
 

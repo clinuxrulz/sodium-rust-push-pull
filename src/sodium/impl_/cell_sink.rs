@@ -31,17 +31,18 @@ impl<A: Trace + Finalize + Clone + 'static> CellSink<A> {
                     deps
                 ),
                 Vec::new(),
-                || {}
+                || {},
+                "CellSink::new"
             )
         }
     }
 
     pub fn send(&self, value: A) {
-        let sodium_ctx = self.cell.node.sodium_ctx();
+        let sodium_ctx = self.cell._node().sodium_ctx();
         sodium_ctx.transaction(|| {
             let next_value_op = unsafe { &mut *(*self.next_value_op).get() };
             *next_value_op = Some(sodium_ctx.new_lazy(move || value.clone()));
-            self.cell.node.mark_dirty();
+            self.cell._node().mark_dirty();
         });
     }
 

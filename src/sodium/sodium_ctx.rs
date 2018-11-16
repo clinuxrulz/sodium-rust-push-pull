@@ -76,6 +76,10 @@ impl SodiumCtx {
         let sodium_ctx = self.clone();
         self.impl_.transaction(|| code(&sodium_ctx))
     }
+
+    pub fn node_count(&self) -> u32 {
+        self.impl_.node_count()
+    }
 }
 
 impl Clone for SodiumCtx {

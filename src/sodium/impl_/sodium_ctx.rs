@@ -27,7 +27,8 @@ pub struct SodiumCtxData {
     pub to_be_updated_set: HashSet<Node>,
     pub resort_required: bool,
     pub pre_trans: Vec<Box<FnMut()>>,
-    pub post_trans: Vec<Box<FnMut()>>
+    pub post_trans: Vec<Box<FnMut()>>,
+    pub node_count: u32
 }
 
 impl SodiumCtx {
@@ -41,7 +42,8 @@ impl SodiumCtx {
                 to_be_updated_set: HashSet::new(),
                 resort_required: false,
                 pre_trans: Vec::new(),
-                post_trans: Vec::new()
+                post_trans: Vec::new(),
+                node_count: 0
             }))
         }
     }
@@ -68,6 +70,21 @@ impl SodiumCtx {
         let id = self_.next_id;
         self_.next_id = self_.next_id + 1;
         id
+    }
+
+    pub fn inc_node_count(&self) {
+        let self_ = unsafe { &mut *(*self.data).get() };
+        self_.node_count = self_.node_count + 1;
+    }
+
+    pub fn dec_node_count(&self) {
+        let self_ = unsafe { &mut *(*self.data).get() };
+        self_.node_count = self_.node_count - 1;
+    }
+
+    pub fn node_count(&self) -> u32 {
+        let self_ = unsafe { &*(*self.data).get() };
+        self_.node_count
     }
 
     pub fn pre<F: FnMut() + 'static>(&self, f: F) {

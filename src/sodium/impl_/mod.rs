@@ -19,6 +19,7 @@ pub use self::sodium_ctx::SodiumCtx;
 pub use self::sodium_ctx::SodiumCtxData;
 pub use self::sodium_ctx::WeakSodiumCtx;
 pub use self::stream::Stream;
+pub use self::stream::StreamData;
 pub use self::stream_loop::StreamLoop;
 pub use self::stream_sink::StreamSink;
 

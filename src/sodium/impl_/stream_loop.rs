@@ -28,10 +28,10 @@ impl<A: Trace + Finalize + Clone + 'static> StreamLoop<A> {
         if *looped {
             panic!("StreamLoop looped more than once.");
         }
-        let value = self.stream.value.clone();
+        let value = self.stream._value().clone();
         let update_deps = vec![sa.to_dep(), Dep { gc_dep: value.to_dep() }];
-        let sa_node = sa.node.clone();
-        let node = self.stream.node.clone();
+        let sa_node = sa._node().clone();
+        let node = self.stream._node().clone();
         let sodium_ctx = sa_node.sodium_ctx().clone();
         node.set_update(
             move || {

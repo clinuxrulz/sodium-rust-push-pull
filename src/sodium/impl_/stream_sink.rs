@@ -1,4 +1,6 @@
+use sodium::impl_::Dep;
 use sodium::impl_::Stream;
+use sodium::impl_::StreamData;
 use sodium::impl_::MemoLazy;
 use sodium::impl_::Node;
 use sodium::impl_::SodiumCtx;
@@ -29,8 +31,9 @@ impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
 
     pub fn _new(sodium_ctx: &SodiumCtx, coalescer_op: Option<Rc<Fn(&A,&A)->A>>) -> StreamSink<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
-        let value = gc_ctx.new_gc(UnsafeCell::new(None));
-        let next_value = gc_ctx.new_gc(UnsafeCell::new(None));
+        let value = gc_ctx.new_gc_with_desc(UnsafeCell::new(None), String::from("StreamSink_value"));
+        let next_value = gc_ctx.new_gc_with_desc(UnsafeCell::new(None), String::from("StreamSink_next_value"));
+        let update_deps = vec![Dep { gc_dep: value.to_dep() }, Dep { gc_dep: next_value.to_dep() }];
         StreamSink {
             value: value.clone(),
             next_value: next_value.clone(),
@@ -44,7 +47,7 @@ impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
                     *value = next_value2.clone();
                     return true;
                 },
-                Vec::new(),
+                update_deps,
                 Vec::new(),
                 || {}
             ),
@@ -89,9 +92,12 @@ impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
     }
 
     pub fn to_stream(&self) -> Stream<A> {
+        let mut gc_ctx = self.node.sodium_ctx().gc_ctx();
         Stream {
-            value: self.value.clone(),
-            node: self.node.clone()
+            data: gc_ctx.new_gc_with_desc(UnsafeCell::new(StreamData {
+                value: self.value.clone(),
+                node: self.node.clone()
+            }), String::from("StreamSink::to_stream"))
         }
     }
 }

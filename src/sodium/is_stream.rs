@@ -50,7 +50,7 @@ pub trait IsStream<A: Finalize + Trace + Clone + 'static> {
               S: Clone + Trace + Finalize + 'static,
               F: IsLambda2<A,S,(B,S)> + 'static
     {
-        let sodium_ctx = self.to_stream().impl_.node.sodium_ctx();
+        let sodium_ctx = self.to_stream().impl_._node().sodium_ctx();
         let sodium_ctx = &sodium_ctx;
         self.collect_lazy(sodium_ctx.new_lazy(move || init_state.clone()), f)
     }
@@ -67,7 +67,7 @@ pub trait IsStream<A: Finalize + Trace + Clone + 'static> {
         where S: Clone + Trace + Finalize + 'static,
               F: IsLambda2<A,S,S> + 'static
     {
-        let sodium_ctx = self.to_stream().impl_.node.sodium_ctx();
+        let sodium_ctx = self.to_stream().impl_._node().sodium_ctx();
         let sodium_ctx = &sodium_ctx;
         self.accum_lazy(sodium_ctx.new_lazy(move || init_state.clone()), f)
     }

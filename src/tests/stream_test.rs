@@ -4,6 +4,7 @@ use sodium::CellSink;
 use sodium::IsCell;
 use sodium::IsStream;
 use sodium::IsStreamOption;
+use sodium::Lambda;
 use sodium::Operational;
 use sodium::SodiumCtx;
 use sodium::Stream;
@@ -51,10 +52,10 @@ fn map() {
 fn map_to() {
     let mut sodium_ctx = SodiumCtx::new();
     let sodium_ctx = &mut sodium_ctx;
+    let l;
     {
         let s = sodium_ctx.new_stream_sink();
         let out = Rc::new(RefCell::new(Vec::new()));
-        let l;
         {
             let out = out.clone();
             l =
@@ -67,8 +68,9 @@ fn map_to() {
         s.send(&7);
         s.send(&9);
         assert_eq!(vec!["fusebox", "fusebox"], *(*out).borrow());
-        l.unlisten();
     }
+    l.debug();
+    l.unlisten();
     assert_memory_freed(sodium_ctx);
 }
 
@@ -347,11 +349,11 @@ fn gate() {
 fn collect() {
     let mut sodium_ctx = SodiumCtx::new();
     let sodium_ctx = &mut sodium_ctx;
+    let l;
     {
         let ea = sodium_ctx.new_stream_sink();
         let out = Rc::new(RefCell::new(Vec::new()));
         let sum = ea.collect(0, |a:&u32,s:&u32| (*a + *s + 100, *a + *s));
-        let l;
         {
             let out = out.clone();
             l =
@@ -365,9 +367,10 @@ fn collect() {
         ea.send(&1);
         ea.send(&2);
         ea.send(&3);
-        l.unlisten();
         assert_eq!(vec![105, 112, 113, 115, 118], *out.borrow());
     }
+    l.debug();
+    l.unlisten();
     assert_memory_freed(sodium_ctx);
 }
 
@@ -375,11 +378,11 @@ fn collect() {
 fn accum() {
     let mut sodium_ctx = SodiumCtx::new();
     let sodium_ctx = &mut sodium_ctx;
+    let l;
     {
         let ea = sodium_ctx.new_stream_sink();
         let out = Rc::new(RefCell::new(Vec::new()));
         let sum = ea.accum(100, |a:&u32, s:&u32| *a + *s);
-        let l;
         {
             let out = out.clone();
             l =
@@ -393,9 +396,10 @@ fn accum() {
         ea.send(&1);
         ea.send(&2);
         ea.send(&3);
-        l.unlisten();
         assert_eq!(vec![100, 105, 112, 113, 115, 118], *out.borrow());
     }
+    l.debug();
+    l.unlisten();
     assert_memory_freed(sodium_ctx);
 }
 
@@ -420,6 +424,7 @@ fn once() {
         s.send(&"A");
         s.send(&"B");
         s.send(&"C");
+        l.debug();
         l.unlisten();
         assert_eq!(vec!["A"], *out.borrow());
     }
@@ -540,7 +545,14 @@ fn switch_c() {
         let ca = ssc.map(|s: &SC| s.a.clone()).filter_option().hold("A");
         let cb = ssc.map(|s: &SC| s.b.clone()).filter_option().hold("a");
         let csw_str = ssc.map(|s: &SC| s.sw.clone()).filter_option().hold("ca");
-        let csw = csw_str.map(move |s: &&'static str| if *s == "ca" { ca.clone() } else { cb.clone() });
+        let csw_deps = vec![ca.to_dep(), cb.to_dep()];
+        let csw = csw_str.map(
+            Lambda::new(
+                move |s: &&'static str|
+                    if *s == "ca" { ca.clone() } else { cb.clone() },
+                csw_deps
+            )
+        );
         let co = Cell::switch_c(&csw);
         let out = Rc::new(RefCell::new(Vec::new()));
         let l;
@@ -572,6 +584,7 @@ fn switch_c() {
 fn switch_s() {
     let mut sodium_ctx = SodiumCtx::new();
     let sodium_ctx = &mut sodium_ctx;
+    let l;
     {
         #[derive(Clone)]
         struct SS {
@@ -606,13 +619,16 @@ fn switch_s() {
                 )
                 .filter_option()
                 .hold("sa");
+        let csw_deps = vec![sa.to_dep(), sb.to_dep()];
         let csw: Cell<Stream<&'static str>> = csw_str.map(
-            move |sw: &&'static str|
-                if *sw == "sa" { sa.clone() } else { sb.clone() }
+            Lambda::new(
+                move |sw: &&'static str|
+                    if *sw == "sa" { sa.clone() } else { sb.clone() },
+                csw_deps
+            )
         );
         let so = Cell::switch_s(&csw);
         let out = Rc::new(RefCell::new(Vec::<&'static str>::new()));
-        let l;
         {
             let out = out.clone();
             l = so.listen(
@@ -629,9 +645,10 @@ fn switch_s() {
         sss.send(&SS::new("G", "g", Some("sb")));
         sss.send(&SS::new("H", "h", Some("sa")));
         sss.send(&SS::new("I", "i", Some("sa")));
-        l.unlisten();
         assert_eq!(vec!["A", "B", "C", "d", "e", "F", "G", "h", "I"], *out.borrow());
     }
+    l.debug();
+    l.unlisten();
     assert_memory_freed(sodium_ctx);
 }
 

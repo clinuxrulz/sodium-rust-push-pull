@@ -12,6 +12,8 @@ use std::cell::Cell;
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
 use std::rc::Rc;
+use std::collections::HashSet;
+use std::collections::HashMap;
 
 pub struct GcCtx {
     data: Rc<RefCell<GcCtxData>>
@@ -47,8 +49,8 @@ impl Clone for GcDep {
     }
 }
 
-impl Finalize for GcDep {
-    fn finalize(&mut self) {
+impl Drop for GcDep {
+    fn drop(&mut self) {
         let n: &mut Node = unsafe { &mut *self.node };
         n.weak = n.weak - 1;
     }
@@ -87,6 +89,11 @@ impl<A: ?Sized> Deref for Gc<A> {
 }
 
 impl<A: ?Sized> Gc<A> {
+    pub fn debug(&self) {
+        let node = unsafe { &*self.node };
+        node.debug();
+    }
+
     pub fn to_dep(&self) -> GcDep {
         let n: &mut Node = unsafe { &mut *self.node };
         n.weak = n.weak + 1;
@@ -187,8 +194,7 @@ pub trait Finalize {
 
 impl<A: Trace> Trace for Gc<A> {
     fn trace(&self, f: &mut FnMut(&GcDep)) {
-        let self2: &A = &*self;
-        self2.trace(f);
+        f(&self.to_dep());
     }
 }
 
@@ -473,6 +479,7 @@ enum Colour {
 }
 
 struct Node {
+    desc_op: Option<String>,
     strong: usize,
     weak: usize,
     colour: Colour,
@@ -484,9 +491,47 @@ struct Node {
 
 impl Node {
     fn trace(&self, f: &mut FnMut(*mut Node)) {
-        if self.strong > 0 {
-            (self.trace)(f);
+        (self.trace)(f);
+    }
+
+    fn debug(&self) {
+        self.debug2(&mut HashSet::new(), &mut HashMap::new(), &mut 1);
+    }
+
+    fn node_id(&self, id_map: &mut HashMap<*const Node,u32>, next_id: &mut u32) -> u32 {
+        {
+            let id_op = id_map.get(&(self as *const Node));
+            if let Some(id) = id_op {
+                return id.clone();
+            }
         }
+        let id = *next_id;
+        id_map.insert(self as *const Node, id);
+        *next_id = *next_id + 1;
+        id
+    }
+
+    fn debug2(&self, visited: &mut HashSet<*const Node>, id_map: &mut HashMap<*const Node,u32>, next_id: &mut u32) {
+        if visited.contains(&(self as *const Node)) {
+            return;
+        }
+        visited.insert(self as *const Node);
+        let id = self.node_id(id_map, next_id);
+        print!("node");
+        if let &Some(ref desc) = &self.desc_op {
+            print!("({})", desc);
+        }
+        print!(" {}/{} {}: ", self.strong, self.weak, id);
+        self.trace(&mut |node:*mut Node| {
+            let node = unsafe { &*node };
+            let id = node.node_id(id_map, next_id);
+            print!(" {}", id);
+        });
+        println!();
+        self.trace(&mut |node:*mut Node| {
+            let node = unsafe { &*node };
+            node.debug2(visited, id_map, next_id);
+        });
     }
 }
 
@@ -505,6 +550,14 @@ impl GcCtx {
     }
 
     pub fn new_gc<A: Trace + Finalize + 'static>(&mut self, value: A) -> Gc<A> {
+        self._new_gc(value, None)
+    }
+
+    pub fn new_gc_with_desc<A: Trace + Finalize + 'static>(&mut self, value: A, desc: String) -> Gc<A> {
+        self._new_gc(value, Some(desc))
+    }
+
+    fn _new_gc<A: Trace + Finalize + 'static>(&mut self, value: A, desc_op: Option<String>) -> Gc<A> {
         let value = Box::into_raw(Box::new(value));
         let value2 = value.clone();
         let value3 = value.clone();
@@ -512,6 +565,7 @@ impl GcCtx {
             ctx: self.clone(),
             value: value,
             node: Box::into_raw(Box::new(Node {
+                desc_op: desc_op,
                 strong: 1,
                 weak: 1,
                 colour: Colour::Black,

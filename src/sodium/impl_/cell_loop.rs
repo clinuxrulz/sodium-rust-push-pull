@@ -44,11 +44,11 @@ impl<A: Trace + Finalize + Clone + 'static> CellLoop<A> {
             panic!("CellLoop looped more than once.");
         }
         *init_value = Some(ca.sample_no_trans());
-        let value = self.cell.value.clone();
-        let next_value = self.cell.next_value.clone();
+        let value = self.cell._value().clone();
+        let next_value = self.cell._next_value().clone();
         let update_deps = vec![ca.to_dep(), Dep { gc_dep: next_value.to_dep() }];
-        let ca_node = ca.node.clone();
-        let node = self.cell.node.clone();
+        let ca_node = ca._node().clone();
+        let node = self.cell._node().clone();
         let sodium_ctx = node.sodium_ctx();
         node.set_update(
             move || {
@@ -56,7 +56,7 @@ impl<A: Trace + Finalize + Clone + 'static> CellLoop<A> {
                 {
                     let next_value = unsafe { &mut *(*next_value).get() };
                     let ca = ca.clone();
-                    let ca_next_value = unsafe { &*(*ca.next_value).get() };
+                    let ca_next_value = unsafe { &*(*ca._next_value()).get() };
                     let x = ca_next_value.get().clone();
                     *next_value = sodium_ctx.new_lazy(move || {
                         x.clone()
