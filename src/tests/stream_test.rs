@@ -517,6 +517,7 @@ fn hold_is_delayed() {
 fn switch_c() {
     let mut sodium_ctx = SodiumCtx::new();
     let sodium_ctx = &mut sodium_ctx;
+    let l;
     {
         #[derive(Clone)]
         struct SC {
@@ -540,8 +541,7 @@ fn switch_c() {
             fn trace(&self, f: &mut FnMut(&GcDep)) {}
         }
         let ssc = sodium_ctx.new_stream_sink();
-        let mut sodium_ctx2 = sodium_ctx.clone();
-        let sodium_ctx2 = &mut sodium_ctx2;
+        let sodium_ctx2 = sodium_ctx.clone();
         let ca = ssc.map(|s: &SC| s.a.clone()).filter_option().hold("A");
         let cb = ssc.map(|s: &SC| s.b.clone()).filter_option().hold("a");
         let csw_str = ssc.map(|s: &SC| s.sw.clone()).filter_option().hold("ca");
@@ -555,7 +555,6 @@ fn switch_c() {
         );
         let co = Cell::switch_c(&csw);
         let out = Rc::new(RefCell::new(Vec::new()));
-        let l;
         {
             let out = out.clone();
             l =
@@ -574,9 +573,10 @@ fn switch_c() {
         ssc.send(&SC::new(Some("G"), Some("g"), Some("cb")));
         ssc.send(&SC::new(Some("H"), Some("h"), Some("ca")));
         ssc.send(&SC::new(Some("I"), Some("i"), Some("ca")));
-        l.unlisten();
         assert_eq!(vec!["A", "B", "c", "d", "E", "F", "f", "F", "g", "H", "I"], *out.borrow());
     }
+    l.debug();
+    l.unlisten();
     assert_memory_freed(sodium_ctx);
 }
 

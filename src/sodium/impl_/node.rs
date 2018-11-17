@@ -142,6 +142,7 @@ impl Node {
                 });
             }
         }
+        data.dependencies.clear();
     }
 
     pub fn add_dependencies(&self, dependencies: Vec<Node>) {

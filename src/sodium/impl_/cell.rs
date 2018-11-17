@@ -359,20 +359,26 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         };
         let node1_deps = vec![csa._node().clone()];
         let node1;
+        let node1_self: Gc<UnsafeCell<Option<Node>>> = gc_ctx.new_gc_with_desc(UnsafeCell::new(None), String::from("Cell::switch_s_node1_self"));
         {
             let sodium_ctx2 = sodium_ctx.clone();
             let node2 = node2.clone();
-            let node1_update_deps = vec![csa.to_dep(), node2.to_dep()];
+            let node1_update_deps = vec![csa.to_dep(), node2.to_dep(), Dep { gc_dep: node1_self.to_dep() }];
+            let node1_self = node1_self.clone();
             node1 = Node::new(
                 sodium_ctx,
                 move || {
                     let sodium_ctx = &sodium_ctx2;
                     let node2 = node2.clone();
                     let csa = csa.clone();
+                    let node1_self = node1_self.clone();
                     sodium_ctx.post(move || {
                         let new_inner_node = csa.sample_no_trans()._node().clone();
+                        let node1 = unsafe { &*(*node1_self).get() }.clone().unwrap();
                         node2.remove_all_dependencies();
+                        node2.ensure_bigger_than(node1.rank());
                         node2.ensure_bigger_than(new_inner_node.rank());
+                        node2.add_dependencies(vec![node1]);
                         node2.add_dependencies(vec![new_inner_node]);
                     });
                     false
@@ -382,6 +388,10 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 || {},
                 String::from("Cell::switch_s_node1")
             );
+        }
+        {
+            let node1_self = unsafe { &mut *(*node1_self).get() };
+            *node1_self = Some(node1.clone());
         }
         node2.ensure_bigger_than(node1.rank());
         node2.add_dependencies(vec![node1]);
