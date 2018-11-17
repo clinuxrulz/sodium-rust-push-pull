@@ -125,7 +125,8 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                     },
                     update_deps,
                     deps,
-                    cleanup
+                    cleanup,
+                    String::from(desc) + "_node"
                 )
             }), String::from(desc))
         }
@@ -232,8 +233,9 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
         let sodium_ctx = &sodium_ctx;
         let self_ = self.clone();
         let pred = Rc::new(pred);
-        let pred_deps = pred.deps();
         let sodium_ctx2 = sodium_ctx.clone();
+        let mut update_deps = pred.deps();
+        update_deps.push(self.to_dep());
         Stream::_new(
             sodium_ctx,
             Lambda::new(
@@ -252,7 +254,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                         None
                     }
                 },
-                pred_deps
+                update_deps
             ),
             vec![self._node().clone()],
             || {},
@@ -263,11 +265,13 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
     pub fn merge<FN:Fn(&A,&A)->A+'static>(&self, sa: Stream<A>, f: FN) -> Stream<A> {
         let sodium_ctx = self._node().sodium_ctx();
         let sodium_ctx = &sodium_ctx;
-        let f_deps = f.deps();
         let f = Rc::new(f);
         let node_deps = vec![self._node().clone(), sa._node().clone()];
         let self_ = self.clone();
         let sodium_ctx2 = sodium_ctx.clone();
+        let mut update_deps = f.deps();
+        update_deps.push(self.to_dep());
+        update_deps.push(sa.to_dep());
         Stream::_new(
             sodium_ctx,
             Lambda::new(
@@ -290,7 +294,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                             }
                     }
                 },
-                f_deps
+                update_deps
             ),
             node_deps,
             || {},
@@ -349,7 +353,7 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
             let gc_ctx = &mut gc_ctx;
             let init_firing = self.peek_value();
             let init_firing_is_some = init_firing.is_some();
-            let value = gc_ctx.new_gc(UnsafeCell::new(init_firing));
+            let value = gc_ctx.new_gc_with_desc(UnsafeCell::new(init_firing), String::from("Stream::once_value"));
             let self_ = self.clone();
             let deps = if init_firing_is_some { Vec::new() } else { vec![self_._node().clone()] };
             let node_self: Rc<UnsafeCell<Option<Node>>> = Rc::new(UnsafeCell::new(None));
@@ -381,7 +385,8 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
                     },
                     Vec::new(),
                     deps,
-                    || {}
+                    || {},
+                    String::from("Stream::once_node")
                 );
             }
             {
@@ -390,10 +395,10 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
             }
             node.add_update_deps(vec![node.to_dep()]);
             Stream {
-                data: gc_ctx.new_gc(UnsafeCell::new(StreamData {
+                data: gc_ctx.new_gc_with_desc(UnsafeCell::new(StreamData {
                     value,
                     node
-                }))
+                }), String::from("Stream::once"))
             }
         })
     }
@@ -475,7 +480,8 @@ impl<A: Clone + Trace + Finalize + 'static> Stream<A> {
             },
             update_deps,
             vec![self._node().clone()],
-            || {}
+            || {},
+            String::from("Stream::listen_node")
         ))
     }
 }

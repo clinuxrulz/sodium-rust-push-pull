@@ -46,11 +46,12 @@ impl<A: Finalize> Finalize for MemoLazyData<A> {
 impl<A: Trace + Finalize + 'static> MemoLazy<A> {
     pub fn new<F: IsLambda0<A> + 'static>(gc_ctx: &mut GcCtx, thunk: F) -> MemoLazy<A> {
         MemoLazy {
-            data: gc_ctx.new_gc(
+            data: gc_ctx.new_gc_with_desc(
                 MemoLazyData {
                     thunk: Box::new(thunk),
                     val_op: UnsafeCell::new(None)
-                }
+                },
+                String::from("MemoLazy::new")
             )
         }
     }

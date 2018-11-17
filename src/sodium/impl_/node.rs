@@ -42,7 +42,8 @@ impl Node {
         update: UPDATE,
         update_dependencies: Vec<Dep>,
         dependencies: Vec<Node>,
-        mut cleanup: CLEANUP
+        mut cleanup: CLEANUP,
+        desc: String
     ) -> Node {
         let id = sodium_ctx.new_id();
         sodium_ctx.inc_node_count();
@@ -87,7 +88,7 @@ impl Node {
         }
         let mut gc_ctx = sodium_ctx.gc_ctx();
         let node = Node {
-            data: gc_ctx.new_gc(UnsafeCell::new(
+            data: gc_ctx.new_gc_with_desc(UnsafeCell::new(
                 NodeData {
                     id,
                     rank,
@@ -98,7 +99,7 @@ impl Node {
                     cleanup: Box::new(cleanup2),
                     weak_sodium_ctx: sodium_ctx.downgrade()
                 }
-            ))
+            ), desc)
         };
         unsafe {
             *(*self_).get() = Some(node.downgrade());

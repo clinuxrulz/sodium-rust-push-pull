@@ -16,7 +16,7 @@ pub struct CellSink<A> {
 impl<A: Trace + Finalize + Clone + 'static> CellSink<A> {
     pub fn new(sodium_ctx: &SodiumCtx, value: A) -> CellSink<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
-        let next_value_op = gc_ctx.new_gc(UnsafeCell::new(None));
+        let next_value_op = gc_ctx.new_gc_with_desc(UnsafeCell::new(None), String::from("CellSink::new_next_value"));
         let deps = vec![Dep { gc_dep: next_value_op.to_dep() }];
         CellSink {
             next_value_op: next_value_op.clone(),

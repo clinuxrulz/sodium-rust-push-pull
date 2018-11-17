@@ -103,12 +103,12 @@ impl<A: ?Sized> Gc<A> {
         }
     }
 
-    pub fn strong_count(&self) -> usize {
+    pub fn strong_count(&self) -> i32 {
         let node = unsafe { &*self.node };
         node.strong
     }
 
-    pub fn weak_count(&self) -> usize {
+    pub fn weak_count(&self) -> i32 {
         let node = unsafe { &*self.node };
         node.weak
     }
@@ -480,18 +480,21 @@ enum Colour {
 
 struct Node {
     desc_op: Option<String>,
-    strong: usize,
-    weak: usize,
+    strong: i32,
+    weak: i32,
     colour: Colour,
     buffered: bool,
     trace: Box<Fn(&mut FnMut(*mut Node))>,
     finalize: Box<Fn()>,
+    freed: bool,
     cleanup: Box<Fn()>
 }
 
 impl Node {
     fn trace(&self, f: &mut FnMut(*mut Node)) {
-        (self.trace)(f);
+        if !self.freed {
+            (self.trace)(f);
+        }
     }
 
     fn debug(&self) {
@@ -576,6 +579,7 @@ impl GcCtx {
                 finalize: Box::new(move || {
                     unsafe { &mut *value3 }.finalize()
                 }),
+                freed: false,
                 cleanup: Box::new(move || {
                     unsafe { Box::from_raw(value); }
                 })
@@ -620,6 +624,7 @@ impl GcCtx {
         let s = unsafe { &mut *s };
         debug_assert!(s.strong == 0);
         (s.cleanup)();
+        s.freed = true;
         if s.weak > 0 {
             s.weak = s.weak - 1;
             if s.weak == 0 {

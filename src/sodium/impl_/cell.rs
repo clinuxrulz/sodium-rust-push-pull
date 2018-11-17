@@ -79,12 +79,12 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         desc: &'static str
     ) -> Cell<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
-        let value = gc_ctx.new_gc(UnsafeCell::new(init_value.clone()));
-        let next_value = gc_ctx.new_gc(UnsafeCell::new(init_value));
+        let value = gc_ctx.new_gc_with_desc(UnsafeCell::new(init_value.clone()), String::from(desc) + "_value");
+        let next_value = gc_ctx.new_gc_with_desc(UnsafeCell::new(init_value), String::from(desc) + "_next_value");
         let update_deps = update.deps();
         let sodium_ctx2 = sodium_ctx.clone();
         Cell {
-            data: gc_ctx.new_gc(UnsafeCell::new(CellData {
+            data: gc_ctx.new_gc_with_desc(UnsafeCell::new(CellData {
                 value: value.clone(),
                 next_value: next_value.clone(),
                 node: Node::new(
@@ -109,9 +109,10 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                     },
                     update_deps,
                     deps,
-                    cleanup
+                    cleanup,
+                    String::from(desc) + "_node"
                 )
-            }))
+            }), String::from(desc))
         }
     }
 
@@ -157,7 +158,6 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         let sodium_ctx = self._node().sodium_ctx();
         let sodium_ctx = &sodium_ctx;
         let self_ = self.clone();
-        let update_deps = f.deps();
         let f = Rc::new(f);
         let init_value;
         {
@@ -169,6 +169,8 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         }
         let node_deps = vec![self_._node().clone()];
         let sodium_ctx2 = sodium_ctx.clone();
+        let mut update_deps = f.deps();
+        update_deps.push(self.to_dep());
         Cell::_new(
             sodium_ctx,
             init_value,
@@ -315,13 +317,13 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         let mut gc_ctx = sodium_ctx.gc_ctx();
         let gc_ctx = &mut gc_ctx;
         let sa_init = csa.sample_no_trans();
-        let value: Gc<UnsafeCell<Option<MemoLazy<A>>>> = gc_ctx.new_gc(UnsafeCell::new(None));
+        let value: Gc<UnsafeCell<Option<MemoLazy<A>>>> = gc_ctx.new_gc_with_desc(UnsafeCell::new(None), String::from("Cell::switch_s_value"));
         let node2;
         {
             let sodium_ctx2 = sodium_ctx.clone();
             let value = value.clone();
             let csa = csa.clone();
-            let node2_update_deps = Vec::new();//vec![Dep { gc_dep: value.to_dep() }, csa.to_dep()];
+            let node2_update_deps = vec![Dep { gc_dep: value.to_dep() }, csa.to_dep()];
             node2 = Node::new(
                 sodium_ctx,
                 move || {
@@ -345,7 +347,8 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 },
                 node2_update_deps,
                 vec![sa_init._node().clone()],
-                || {}
+                || {},
+                String::from("Cell::switch_s_node2")
             );
         }
         let result = Stream {
@@ -359,7 +362,7 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
         {
             let sodium_ctx2 = sodium_ctx.clone();
             let node2 = node2.clone();
-            let node1_update_deps = Vec::new();//vec![csa.to_dep(), node2.to_dep()];
+            let node1_update_deps = vec![csa.to_dep(), node2.to_dep()];
             node1 = Node::new(
                 sodium_ctx,
                 move || {
@@ -376,7 +379,8 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
                 },
                 node1_update_deps,
                 node1_deps,
-                || {}
+                || {},
+                String::from("Cell::switch_s_node1")
             );
         }
         node2.ensure_bigger_than(node1.rank());
@@ -419,7 +423,8 @@ impl<A: Clone + Trace + Finalize + 'static> Cell<A> {
             },
             Vec::new(),
             vec![self._node().clone()],
-            || {}
+            || {},
+            String::from("Cell::listen_node")
         ))
     }
 }

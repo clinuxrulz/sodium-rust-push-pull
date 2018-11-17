@@ -73,7 +73,7 @@ impl Operational {
         let mut gc_ctx = sodium_ctx.gc_ctx();
         let gc_ctx = &mut gc_ctx;
         let deps = vec![s._node().clone()];
-        let value: Gc<UnsafeCell<Option<MemoLazy<A>>>> = gc_ctx.new_gc(UnsafeCell::new(None));
+        let value: Gc<UnsafeCell<Option<MemoLazy<A>>>> = gc_ctx.new_gc_with_desc(UnsafeCell::new(None), String::from("Operational::split_value"));
         let sodium_ctx2 = sodium_ctx.clone();
         let node2;
         {
@@ -91,14 +91,15 @@ impl Operational {
                 },
                 Vec::new(),
                 Vec::new(),
-                || {}
+                || {},
+                String::from("Operational_split_node2")
             );
         }
         let result = Stream {
-            data: gc_ctx.new_gc(UnsafeCell::new(StreamData {
+            data: gc_ctx.new_gc_with_desc(UnsafeCell::new(StreamData {
                 value: value.clone(),
                 node: node2.clone()
-            }))
+            }), String::from("Operational::split"))
         };
         let node2_dep = node2.to_dep();
         let sodium_ctx2 = sodium_ctx.clone();
@@ -134,7 +135,8 @@ impl Operational {
                 },
                 vec![node2_dep],
                 deps,
-                || {}
+                || {},
+                String::from("Operational_split_node1")
             );
         }
         node2.add_dependencies(vec![node1]);

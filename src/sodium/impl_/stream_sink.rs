@@ -49,7 +49,8 @@ impl<A: Trace + Finalize + Clone + 'static> StreamSink<A> {
                 },
                 update_deps,
                 Vec::new(),
-                || {}
+                || {},
+                String::from("StreamSink::new_node")
             ),
             will_clear: Rc::new(UnsafeCell::new(false)),
             coalescer_op: coalescer_op
